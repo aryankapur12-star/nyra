@@ -19,10 +19,14 @@ export async function POST(req: Request) {
     const subscriptionId = (session.subscription as any)?.id;
     const email = session.customer_email || (session.customer_details?.email ?? '');
 
-    await supabase
-      .from('profiles')
-      .update({ stripe_customer_id: customerId, stripe_subscription_id: subscriptionId })
-      .eq('id', (await supabase.auth.admin.getUserByEmail(email)).data.user?.id ?? '');
+   const { data: userData } = await supabase.auth.admin.listUsers();
+const matchedUser = userData?.users?.find((u: any) => u.email === email);
+
+await supabase
+  .from('profiles')
+  .update({ stripe_customer_id: customerId, stripe_subscription_id: subscriptionId })
+  .eq('id', matchedUser?.id ?? '');
+```
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
