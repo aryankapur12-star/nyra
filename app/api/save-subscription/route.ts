@@ -1,3 +1,4 @@
+
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
@@ -32,10 +33,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
-```
-
-Save with **Ctrl + S**, then push:
-```
-git add .
-git commit -m "Fix save-subscription route"
-git push
