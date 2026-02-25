@@ -19,14 +19,13 @@ export async function POST(req: Request) {
     const subscriptionId = (session.subscription as any)?.id;
     const email = session.customer_email || (session.customer_details?.email ?? '');
 
-   const { data: userData } = await supabase.auth.admin.listUsers();
-const matchedUser = userData?.users?.find((u: any) => u.email === email);
+    const { data: userData } = await supabase.auth.admin.listUsers();
+    const matchedUser = userData?.users?.find((u: any) => u.email === email);
 
-await supabase
-  .from('profiles')
-  .update({ stripe_customer_id: customerId, stripe_subscription_id: subscriptionId })
-  .eq('id', matchedUser?.id ?? '');
-```
+    await supabase
+      .from('profiles')
+      .update({ stripe_customer_id: customerId, stripe_subscription_id: subscriptionId })
+      .eq('id', matchedUser?.id ?? '');
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
@@ -35,6 +34,8 @@ await supabase
 }
 ```
 
-Finally add your Supabase service role key to `.env.local`:
+Save with **Ctrl + S**, then push:
 ```
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+git add .
+git commit -m "Fix save-subscription route"
+git push
