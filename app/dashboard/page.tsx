@@ -9,15 +9,22 @@ type Bill = {
   due_date: string;
   recurring: boolean;
   remind_days_before: number;
+  end_of_month: boolean;
 };
 
-function getNextDueDate(dueDateStr: string, recurring: boolean): string {
+function getNextDueDate(dueDateStr: string, recurring: boolean, endOfMonth: boolean): string {
   if (!recurring) return dueDateStr;
+  const originalDay = parseInt(dueDateStr.split("-")[2]);
   const due = new Date(dueDateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   while (due < today) {
-    due.setMonth(due.getMonth() + 1);
+    const nextMonth = due.getMonth() + 1;
+    const nextYear = due.getFullYear() + (nextMonth > 11 ? 1 : 0);
+    const clampedMonth = nextMonth % 12;
+    const daysInNextMonth = new Date(nextYear, clampedMonth + 1, 0).getDate();
+    const day = endOfMonth ? daysInNextMonth : Math.min(originalDay, daysInNextMonth);
+    due.setFullYear(nextYear, clampedMonth, day);
   }
   return due.toISOString().split("T")[0];
 }
@@ -29,7 +36,10 @@ export default function Dashboard() {
   const [adding, setAdding] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-  const [newBill, setNewBill] = useState({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3 });
+  const [newBill, setNewBill] = useState({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3, end_of_month: false });
+
+  const selectedDay = newBill.due_date ? parseInt(newBill.due_date.split("-")[2]) : null;
+  const showEndOfMonthOption = selectedDay !== null && selectedDay >= 28;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,7 +50,7 @@ export default function Dashboard() {
           const bills = data || [];
           const updatedBills = await Promise.all(bills.map(async (bill) => {
             if (!bill.recurring) return bill;
-            const nextDate = getNextDueDate(bill.due_date, bill.recurring);
+            const nextDate = getNextDueDate(bill.due_date, bill.recurring, bill.end_of_month);
             if (nextDate !== bill.due_date) {
               await supabase.from("bills").update({ due_date: nextDate }).eq("id", bill.id);
               return { ...bill, due_date: nextDate };
@@ -81,7 +91,7 @@ export default function Dashboard() {
       `Adding this bill will increase your monthly payment by $1 to $${newTotal}/month. Confirm?`
     );
     if (!confirmed) return;
-    const rolledDate = getNextDueDate(newBill.due_date, newBill.recurring);
+    const rolledDate = getNextDueDate(newBill.due_date, newBill.recurring, newBill.end_of_month);
     const { data, error } = await supabase.from("bills").insert({
       user_id: user.id,
       bill_name: newBill.bill_name,
@@ -89,10 +99,11 @@ export default function Dashboard() {
       due_date: rolledDate,
       recurring: newBill.recurring,
       remind_days_before: newBill.remind_days_before,
+      end_of_month: newBill.end_of_month,
     }).select().single();
     if (!error && data) {
       setBills([...bills, data].sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()));
-      setNewBill({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3 });
+      setNewBill({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3, end_of_month: false });
       setAiSuggestion(null);
       setAdding(false);
       await fetch("/api/update-subscription", {
@@ -182,6 +193,10 @@ export default function Dashboard() {
         .remind-badge{display:inline-block;background:rgba(124,106,255,0.1);color:var(--accent);padding:2px 8px;border-radius:100px;font-size:0.72rem;margin-left:8px;}
         .ai-suggestion{background:rgba(106,255,218,0.08);border:1px solid rgba(106,255,218,0.2);color:var(--accent3);padding:10px 14px;border-radius:10px;font-size:0.82rem;margin-top:8px;}
         .ai-loading{color:var(--muted);font-size:0.82rem;margin-top:8px;}
+        .eom-option{background:rgba(124,106,255,0.08);border:1px solid rgba(124,106,255,0.25);border-radius:12px;padding:14px;margin-top:8px;}
+        .eom-option label{text-transform:none;letter-spacing:0;font-size:0.88rem;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0;}
+        .eom-option input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+        .eom-sub{font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:26px;}
         @media(max-width:600px){nav{padding:16px 20px;}.main{padding:32px 16px;}.form-grid{grid-template-columns:1fr;}.bill-card{flex-wrap:wrap;gap:12px;}}
       `}</style>
 
@@ -236,8 +251,19 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <label>Due date</label>
-                  <input type="date" value={newBill.due_date} onChange={e => setNewBill({...newBill, due_date: e.target.value})} required />
+                  <input type="date" value={newBill.due_date} onChange={e => setNewBill({...newBill, due_date: e.target.value, end_of_month: false})} required />
                 </div>
+                {showEndOfMonthOption && (
+                  <div className="form-full">
+                    <div className="eom-option">
+                      <label>
+                        <input type="checkbox" checked={newBill.end_of_month} onChange={e => setNewBill({...newBill, end_of_month: e.target.checked})} />
+                        This bill is due at the end of every month
+                      </label>
+                      <div className="eom-sub">Check this if your bill always falls on the last day of the month (e.g. Jan 31, Feb 28, Mar 31...)</div>
+                    </div>
+                  </div>
+                )}
                 <div className="form-full">
                   <label>Frequency</label>
                   <select value={newBill.recurring ? "recurring" : "once"} onChange={e => setNewBill({...newBill, recurring: e.target.value === "recurring"})}>
@@ -279,7 +305,7 @@ export default function Dashboard() {
                   {daysUntil(bill.due_date) <= 3
                     ? <span className="due-soon">Due in {daysUntil(bill.due_date)} days!</span>
                     : `in ${daysUntil(bill.due_date)} days`
-                  } · {bill.recurring ? "Monthly" : "One-time"}
+                  } · {bill.end_of_month ? "End of month" : "Monthly"}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center"}}>
