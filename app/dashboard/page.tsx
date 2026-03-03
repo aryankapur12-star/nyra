@@ -11,7 +11,6 @@ type Bill = {
   remind_days_before: number;
 };
 
-// Automatically roll forward a past due date based on frequency
 function getNextDueDate(dueDateStr: string, recurring: boolean): string {
   if (!recurring) return dueDateStr;
   const due = new Date(dueDateStr);
@@ -21,21 +20,6 @@ function getNextDueDate(dueDateStr: string, recurring: boolean): string {
     due.setMonth(due.getMonth() + 1);
   }
   return due.toISOString().split("T")[0];
-}
-
-// AI-powered billing cycle suggestion based on bill name
-async function suggestBillingInfo(billName: string): Promise<{ frequency: string; typical_due_day: number | null }> {
-  try {
-    const res = await fetch("/api/suggest-billing", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ billName }),
-    });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { frequency: "monthly", typical_due_day: null };
-  }
 }
 
 export default function Dashboard() {
@@ -54,7 +38,6 @@ export default function Dashboard() {
       supabase.from("bills").select("*").eq("user_id", session.user.id).order("due_date")
         .then(async ({ data }) => {
           const bills = data || [];
-          // Auto-update any past due dates
           const updatedBills = await Promise.all(bills.map(async (bill) => {
             if (!bill.recurring) return bill;
             const nextDate = getNextDueDate(bill.due_date, bill.recurring);
@@ -70,13 +53,21 @@ export default function Dashboard() {
     });
   }, []);
 
-  // When bill name is typed, ask AI for suggestions after a short delay
   useEffect(() => {
     if (newBill.bill_name.length < 3) { setAiSuggestion(null); return; }
     const timeout = setTimeout(async () => {
       setAiLoading(true);
-      const suggestion = await suggestBillingInfo(newBill.bill_name);
-      setAiSuggestion(`💡 AI suggests: ${suggestion.frequency} billing${suggestion.typical_due_day ? `, typically due on the ${suggestion.typical_due_day}th` : ""}`);
+      try {
+        const res = await fetch("/api/suggest-billing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ billName: newBill.bill_name }),
+        });
+        const data = await res.json();
+        setAiSuggestion(`💡 AI suggests: ${data.frequency} billing${data.typical_due_day ? `, typically due around the ${data.typical_due_day}th` : " — due date varies by account"}`);
+      } catch {
+        setAiSuggestion(null);
+      }
       setAiLoading(false);
     }, 800);
     return () => clearTimeout(timeout);
@@ -91,15 +82,14 @@ export default function Dashboard() {
     );
     if (!confirmed) return;
     const rolledDate = getNextDueDate(newBill.due_date, newBill.recurring);
-const { data, error } = await supabase.from("bills").insert({
-  user_id: user.id,
-  bill_name: newBill.bill_name,
-  amount: parseFloat(newBill.amount) || 0,
-  due_date: rolledDate,
-  recurring: newBill.recurring,
-  remind_days_before: newBill.remind_days_before,
-}).select().single();
-```
+    const { data, error } = await supabase.from("bills").insert({
+      user_id: user.id,
+      bill_name: newBill.bill_name,
+      amount: parseFloat(newBill.amount) || 0,
+      due_date: rolledDate,
+      recurring: newBill.recurring,
+      remind_days_before: newBill.remind_days_before,
+    }).select().single();
     if (!error && data) {
       setBills([...bills, data].sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()));
       setNewBill({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3 });
@@ -138,69 +128,61 @@ const { data, error } = await supabase.from("bills").insert({
   };
 
   if (loading || !user) return (
-    <div style={{background:"#0a0a0f", color:"#f0eeff", minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"sans-serif", fontSize:"1.1rem"}}>
+    <div style={{background:"#0a0a0f",color:"#f0eeff",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",fontSize:"1.1rem"}}>
       Loading your bills...
     </div>
   );
 
   return (
-    <>
+    <div style={{background:"#0a0a0f",color:"#f0eeff",minHeight:"100vh",fontFamily:"'DM Sans', sans-serif"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --bg: #0a0a0f; --surface: #13131a; --border: #1e1e2e;
-          --accent: #7c6aff; --accent2: #ff6a9b; --accent3: #6affda;
-          --text: #f0eeff; --muted: #7a7a9a;
-        }
-        body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
-        nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; border-bottom: 1px solid var(--border); background: rgba(10,10,15,0.8); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 10; }
-        .logo-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .logo-sub { font-size: 0.6rem; color: var(--muted); letter-spacing: 0.04em; }
-        .sign-out { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px 18px; border-radius: 100px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
-        .sign-out:hover { border-color: var(--accent2); color: var(--accent2); }
-        .main { max-width: 900px; margin: 0 auto; padding: 48px 24px; }
-        .greeting { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(1.6rem, 3vw, 2.2rem); letter-spacing: -0.02em; margin-bottom: 8px; }
-        .greeting-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 40px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 40px; }
-        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
-        .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
-        .stat-value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem; letter-spacing: -0.02em; }
-        .stat-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
-        .green { color: var(--accent3); } .purple { color: var(--accent); } .pink { color: var(--accent2); }
-        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; }
-        .add-btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 100px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: opacity 0.2s; }
-        .add-btn:hover { opacity: 0.85; }
-        .bill-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; transition: border-color 0.2s; }
-        .bill-card:hover { border-color: rgba(124,106,255,0.25); }
-        .bill-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
-        .bill-meta { font-size: 0.8rem; color: var(--muted); }
-        .bill-amount { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; margin-right: 16px; }
-        .cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 6px 14px; border-radius: 100px; font-size: 0.8rem; cursor: pointer; transition: border-color 0.2s, color 0.2s; font-family: 'DM Sans', sans-serif; }
-        .cancel-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-        .add-form { background: var(--surface); border: 1px solid rgba(124,106,255,0.3); border-radius: 16px; padding: 24px; margin-bottom: 12px; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-        .form-full { grid-column: 1 / -1; }
-        label { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 500; }
-        input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
-        input:focus, select:focus { border-color: var(--accent); }
-        input::placeholder { color: var(--muted); }
-        select option { background: var(--surface); }
-        .form-actions { display: flex; gap: 10px; }
-        .save-btn { background: linear-gradient(135deg, var(--accent), #9b5fff); color: white; border: none; padding: 12px 24px; border-radius: 10px; font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
-        .save-btn:hover { opacity: 0.9; }
-        .discard-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 12px 24px; border-radius: 10px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: border-color 0.2s; }
-        .discard-btn:hover { border-color: var(--accent2); }
-        .empty { text-align: center; padding: 48px; color: var(--muted); font-size: 0.95rem; }
-        .due-soon { color: var(--accent2); font-weight: 500; }
-        .remind-badge { display: inline-block; background: rgba(124,106,255,0.1); color: var(--accent); padding: 2px 8px; border-radius: 100px; font-size: 0.72rem; margin-left: 8px; }
-        .ai-suggestion { background: rgba(106,255,218,0.08); border: 1px solid rgba(106,255,218,0.2); color: var(--accent3); padding: 10px 14px; border-radius: 10px; font-size: 0.82rem; margin-top: 8px; }
-        .ai-loading { color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
-        @media (max-width: 600px) {
-          nav { padding: 16px 20px; } .main { padding: 32px 16px; }
-          .form-grid { grid-template-columns: 1fr; } .bill-card { flex-wrap: wrap; gap: 12px; }
-        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        :root{--bg:#0a0a0f;--surface:#13131a;--border:#1e1e2e;--accent:#7c6aff;--accent2:#ff6a9b;--accent3:#6affda;--text:#f0eeff;--muted:#7a7a9a;}
+        nav{display:flex;align-items:center;justify-content:space-between;padding:20px 48px;border-bottom:1px solid var(--border);background:rgba(10,10,15,0.8);backdrop-filter:blur(20px);position:sticky;top:0;z-index:10;}
+        .logo-name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        .logo-sub{font-size:0.6rem;color:var(--muted);letter-spacing:0.04em;}
+        .sign-out{background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 18px;border-radius:100px;font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;transition:border-color 0.2s,color 0.2s;}
+        .sign-out:hover{border-color:var(--accent2);color:var(--accent2);}
+        .main{max-width:900px;margin:0 auto;padding:48px 24px;}
+        .greeting{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(1.6rem,3vw,2.2rem);letter-spacing:-0.02em;margin-bottom:8px;}
+        .greeting-sub{color:var(--muted);font-size:0.95rem;margin-bottom:40px;}
+        .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:40px;}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;}
+        .stat-label{font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+        .stat-value{font-family:'Syne',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-0.02em;}
+        .stat-sub{font-size:0.8rem;color:var(--muted);margin-top:4px;}
+        .green{color:var(--accent3);}.purple{color:var(--accent);}.pink{color:var(--accent2);}
+        .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+        .section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;}
+        .add-btn{background:var(--accent);color:white;border:none;padding:10px 20px;border-radius:100px;font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;cursor:pointer;transition:opacity 0.2s;}
+        .add-btn:hover{opacity:0.85;}
+        .bill-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;transition:border-color 0.2s;}
+        .bill-card:hover{border-color:rgba(124,106,255,0.25);}
+        .bill-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:4px;}
+        .bill-meta{font-size:0.8rem;color:var(--muted);}
+        .bill-amount{font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;margin-right:16px;}
+        .cancel-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:100px;font-size:0.8rem;cursor:pointer;transition:border-color 0.2s,color 0.2s;font-family:'DM Sans',sans-serif;}
+        .cancel-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+        .add-form{background:var(--surface);border:1px solid rgba(124,106,255,0.3);border-radius:16px;padding:24px;margin-bottom:12px;}
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+        .form-full{grid-column:1/-1;}
+        label{display:block;font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;font-weight:500;}
+        input,select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;transition:border-color 0.2s;}
+        input:focus,select:focus{border-color:var(--accent);}
+        input::placeholder{color:var(--muted);}
+        select option{background:var(--surface);}
+        .form-actions{display:flex;gap:10px;}
+        .save-btn{background:linear-gradient(135deg,var(--accent),#9b5fff);color:white;border:none;padding:12px 24px;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:opacity 0.2s;}
+        .save-btn:hover{opacity:0.9;}
+        .discard-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:12px 24px;border-radius:10px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:border-color 0.2s;}
+        .discard-btn:hover{border-color:var(--accent2);}
+        .empty{text-align:center;padding:48px;color:var(--muted);font-size:0.95rem;}
+        .due-soon{color:var(--accent2);font-weight:500;}
+        .remind-badge{display:inline-block;background:rgba(124,106,255,0.1);color:var(--accent);padding:2px 8px;border-radius:100px;font-size:0.72rem;margin-left:8px;}
+        .ai-suggestion{background:rgba(106,255,218,0.08);border:1px solid rgba(106,255,218,0.2);color:var(--accent3);padding:10px 14px;border-radius:10px;font-size:0.82rem;margin-top:8px;}
+        .ai-loading{color:var(--muted);font-size:0.82rem;margin-top:8px;}
+        @media(max-width:600px){nav{padding:16px 20px;}.main{padding:32px 16px;}.form-grid{grid-template-columns:1fr;}.bill-card{flex-wrap:wrap;gap:12px;}}
       `}</style>
 
       <nav>
@@ -300,7 +282,7 @@ const { data, error } = await supabase.from("bills").insert({
                   } · {bill.recurring ? "Monthly" : "One-time"}
                 </div>
               </div>
-              <div style={{display:"flex", alignItems:"center"}}>
+              <div style={{display:"flex",alignItems:"center"}}>
                 <div className="bill-amount">${bill.amount?.toFixed(2)}</div>
                 <button className="cancel-btn" onClick={() => handleCancel(bill.id)}>Remove</button>
               </div>
@@ -308,6 +290,6 @@ const { data, error } = await supabase.from("bills").insert({
           ))
         )}
       </div>
-    </>
+    </div>
   );
 }
