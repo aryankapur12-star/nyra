@@ -193,10 +193,10 @@ export default function Dashboard() {
         .remind-badge{display:inline-block;background:rgba(124,106,255,0.1);color:var(--accent);padding:2px 8px;border-radius:100px;font-size:0.72rem;margin-left:8px;}
         .ai-suggestion{background:rgba(106,255,218,0.08);border:1px solid rgba(106,255,218,0.2);color:var(--accent3);padding:10px 14px;border-radius:10px;font-size:0.82rem;margin-top:8px;}
         .ai-loading{color:var(--muted);font-size:0.82rem;margin-top:8px;}
-        .eom-option{background:rgba(124,106,255,0.08);border:1px solid rgba(124,106,255,0.25);border-radius:12px;padding:14px;margin-top:8px;}
-        .eom-option label{text-transform:none;letter-spacing:0;font-size:0.88rem;color:var(--text);display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:0;}
-        .eom-option input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
-        .eom-sub{font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:26px;}
+        .eom-option{background:rgba(124,106,255,0.08);border:1px solid rgba(124,106,255,0.4);border-radius:12px;padding:16px;margin-top:8px;}
+        .eom-option label{text-transform:none;letter-spacing:0;font-size:0.95rem;color:var(--text);display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:0;font-weight:500;}
+        .eom-option input[type=checkbox]{width:22px;height:22px;min-width:22px;accent-color:var(--accent);cursor:pointer;}
+        .eom-sub{font-size:0.78rem;color:var(--muted);margin-top:8px;padding-left:34px;line-height:1.5;}
         @media(max-width:600px){nav{padding:16px 20px;}.main{padding:32px 16px;}.form-grid{grid-template-columns:1fr;}.bill-card{flex-wrap:wrap;gap:12px;}}
       `}</style>
 
