@@ -14,7 +14,6 @@ const supabase = createClient(
 
 export async function GET(req: Request) {
   try {
-    // Get all bills with their user profiles
     const { data: bills, error } = await supabase
       .from('bills')
       .select('*, profiles(phone_number, full_name)')
@@ -23,23 +22,49 @@ export async function GET(req: Request) {
     if (error) throw error;
 
     const today = new Date();
-    const reminders_sent = [];
+    today.setHours(0, 0, 0, 0);
+
+    // Group bills by user phone + days until due
+    const userMap: Record<string, { phone: string; name: string; bills: { name: string; amount: number; daysUntil: number }[] }> = {};
 
     for (const bill of bills || []) {
       const dueDate = new Date(bill.due_date);
-      const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      dueDate.setHours(0, 0, 0, 0);
+      const daysUntil = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const remindDays = bill.remind_days_before || 3;
       const phone = (bill.profiles as any)?.phone_number;
       const name = (bill.profiles as any)?.full_name?.split(' ')[0] || 'there';
 
       if (daysUntil === remindDays && phone) {
-        await twilioClient.messages.create({
-          body: `Hey ${name}! 👋 Just a reminder from Nyra — your ${bill.bill_name} payment of $${bill.amount} is due in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}. Stay on top of it! 💸`,
-          from: process.env.TWILIO_PHONE_NUMBER!,
-          to: phone,
-        });
-        reminders_sent.push(bill.bill_name);
+        const key = `${phone}_${daysUntil}`;
+        if (!userMap[key]) {
+          userMap[key] = { phone, name, bills: [] };
+        }
+        userMap[key].bills.push({ name: bill.bill_name, amount: bill.amount, daysUntil });
       }
+    }
+
+    const reminders_sent: string[] = [];
+
+    for (const { phone, name, bills } of Object.values(userMap)) {
+      const daysUntil = bills[0].daysUntil;
+      const dayText = daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+
+      let billList: string;
+      if (bills.length === 1) {
+        billList = `${bills[0].name} ($${bills[0].amount})`;
+      } else {
+        const items = bills.map(b => `${b.name} ($${b.amount})`);
+        billList = items.slice(0, -1).join(', ') + ' and ' + items[items.length - 1];
+      }
+
+      await twilioClient.messages.create({
+        body: `Hey ${name}! 👋 Nyra reminder: ${bills.length > 1 ? 'these bills are' : 'this bill is'} due ${dayText}: ${billList}. Don't forget! 💸`,
+        from: process.env.TWILIO_PHONE_NUMBER!,
+        to: phone,
+      });
+
+      reminders_sent.push(...bills.map(b => b.name));
     }
 
     return NextResponse.json({ success: true, reminders_sent });
