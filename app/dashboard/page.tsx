@@ -90,14 +90,16 @@ export default function Dashboard() {
       `Adding this bill will increase your monthly payment by $1 to $${newTotal}/month. Confirm?`
     );
     if (!confirmed) return;
-    const { data, error } = await supabase.from("bills").insert({
-      user_id: user.id,
-      bill_name: newBill.bill_name,
-      amount: parseFloat(newBill.amount) || 0,
-      due_date: newBill.due_date,
-      recurring: newBill.recurring,
-      remind_days_before: newBill.remind_days_before,
-    }).select().single();
+    const rolledDate = getNextDueDate(newBill.due_date, newBill.recurring);
+const { data, error } = await supabase.from("bills").insert({
+  user_id: user.id,
+  bill_name: newBill.bill_name,
+  amount: parseFloat(newBill.amount) || 0,
+  due_date: rolledDate,
+  recurring: newBill.recurring,
+  remind_days_before: newBill.remind_days_before,
+}).select().single();
+```
     if (!error && data) {
       setBills([...bills, data].sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()));
       setNewBill({ bill_name: "", amount: "", due_date: "", recurring: true, remind_days_before: 3 });
