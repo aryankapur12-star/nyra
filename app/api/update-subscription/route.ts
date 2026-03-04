@@ -22,14 +22,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No subscription found' }, { status: 400 });
     }
 
-    const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
-    const itemId = subscription.items.data[0].id;
-
-    await stripe.subscriptions.update(profile.stripe_subscription_id, {
-      items: [{ id: itemId, quantity: billCount }],
-    });
-
-    return NextResponse.json({ success: true });
+    if (billCount === 0) {
+      // Cancel at period end — they keep access until their billing cycle ends
+      await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        cancel_at_period_end: true,
+      });
+      return NextResponse.json({ success: true, action: 'cancelled_at_period_end' });
+    } else {
+      // Update quantity to match new bill count
+      const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      const itemId = subscription.items.data[0].id;
+      await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        cancel_at_period_end: false, // in case they re-added a bill after cancelling
+        items: [{ id: itemId, quantity: billCount }],
+      });
+      return NextResponse.json({ success: true, action: 'updated', billCount });
+    }
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
