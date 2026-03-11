@@ -1,0 +1,485 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+
+const FAQS = [
+  {
+    q: 'Do I need to download an app?',
+    a: 'Nope. Nyra is entirely web-based and SMS-based. You manage your bills at nyra-nu.vercel.app and receive reminders as text messages. There\'s nothing to download or install — ever.',
+  },
+  {
+    q: 'What happens when I add a bill with a past due date?',
+    a: 'Nyra automatically rolls it forward to the next billing cycle. So if you add a monthly bill with a due date that already passed, it will show the next upcoming due date — you never have to manually update anything.',
+  },
+  {
+    q: 'Can I set different reminder times for each bill?',
+    a: 'Yes — every bill has its own reminder setting. Your rent might need a 7-day heads-up so you can make sure the money is there. Your Netflix just needs 1 day. You\'re in full control for each bill individually.',
+  },
+  {
+    q: 'What if I have a pre-authorized payment set up — do I still need Nyra?',
+    a: 'Pre-authorized payments (PADs) are convenient but they don\'t check your balance first. If your account is low when the payment is pulled, it gets rejected and you\'re charged an NSF fee by your bank. Nyra gives you advance warning so you can make sure the money is actually there — whether the payment is manual or automatic.',
+  },
+  {
+    q: 'How do I cancel?',
+    a: 'Simply remove all your bills from the dashboard. Your subscription automatically cancels itself at the end of your current billing period. No emails, no cancellation forms, no friction.',
+  },
+  {
+    q: 'What does the 20% to Financial Futures Education mean?',
+    a: '20% of all Nyra profits go directly to Financial Futures Education — delivering financial literacy sessions to youth in nonprofits and children\'s aid societies across Canada. Every subscription you pay contributes to that mission.',
+  },
+];
+
+export default function HowItWorksPage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const revealRefs = useRef<(HTMLElement | null)[]>([]);
+
+  // Scroll reveal via IntersectionObserver
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) (e.target as HTMLElement).classList.add('vis'); }),
+      { threshold: 0.08 }
+    );
+    revealRefs.current.forEach(el => { if (el) io.observe(el); });
+    return () => io.disconnect();
+  }, []);
+
+  function addReveal(el: HTMLElement | null, i: number) {
+    revealRefs.current[i] = el;
+  }
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500&display=swap');
+        :root {
+          --blue:#2177d1;--blue-d:#1658a8;--blue-m:#3a8ee0;--blue-l:#5ba3ec;
+          --blue-pale:rgba(33,119,209,0.08);--blue-glow:rgba(33,119,209,0.18);
+          --gold:#c39a35;--gold-l:#d4ae52;--gold-pale:rgba(195,154,53,0.09);
+          --bg:#eef3fb;--text:#0c1524;--text2:#3a4f6a;--muted:#7a90aa;
+          --border:rgba(33,119,209,0.1);--success:#22c55e;--warn:#f59e0b;
+          --glass:rgba(255,255,255,0.60);--glass2:rgba(255,255,255,0.78);
+          --gb:rgba(255,255,255,0.86);
+          --gs:0 4px 24px rgba(33,119,209,0.08),0 1px 4px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.9);
+          --gsl:0 20px 70px rgba(33,119,209,0.14),0 6px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.9);
+        }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        html{scroll-behavior:smooth;}
+        body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6;}
+
+        .bg-blob{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;}
+        .b1{width:700px;height:700px;background:radial-gradient(circle,rgba(33,119,209,0.1) 0%,transparent 70%);top:-200px;left:-200px;animation:bd1 20s ease-in-out infinite;}
+        .b2{width:500px;height:500px;background:radial-gradient(circle,rgba(195,154,53,0.08) 0%,transparent 70%);bottom:5%;right:-100px;animation:bd2 25s ease-in-out infinite;}
+        .b3{width:400px;height:400px;background:radial-gradient(circle,rgba(33,119,209,0.06) 0%,transparent 70%);top:50%;left:40%;animation:bd3 17s ease-in-out infinite;}
+        @keyframes bd1{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,60px)}}
+        @keyframes bd2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-40px)}}
+        @keyframes bd3{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px)}}
+
+        /* NAV */
+        .hiw-nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:200;
+          display:flex;align-items:center;justify-content:space-between;
+          padding:0 10px 0 20px;height:52px;width:calc(100% - 56px);max-width:1000px;
+          background:var(--glass);backdrop-filter:blur(28px) saturate(2);
+          border:1px solid var(--gb);border-radius:100px;box-shadow:var(--gs);}
+        .logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
+        .logo-gem{display:inline-block;width:5px;height:5px;background:var(--gold);border-radius:50%;margin-left:2px;margin-bottom:5px;box-shadow:0 0 8px var(--gold);vertical-align:middle;animation:gp 3s ease infinite;}
+        @keyframes gp{0%,100%{box-shadow:0 0 6px var(--gold);}50%{box-shadow:0 0 16px var(--gold),0 0 28px rgba(195,154,53,.3);}}
+        .nav-links{display:flex;align-items:center;gap:4px;}
+        .nl{font-size:.8rem;font-weight:500;color:var(--text2);text-decoration:none;padding:7px 14px;border-radius:100px;transition:background .2s,color .2s;}
+        .nl:hover{background:var(--blue-pale);color:var(--blue);}
+        .nl.active{color:var(--blue);background:var(--blue-pale);font-weight:600;}
+        .nbtn{background:var(--blue);color:white;padding:8px 20px;border-radius:100px;font-size:.8rem;font-weight:600;text-decoration:none;box-shadow:0 4px 14px var(--blue-glow);transition:background .2s,transform .15s;}
+        .nbtn:hover{background:var(--blue-d);transform:translateY(-1px);}
+        .ffe-link{font-size:.75rem;font-weight:500;color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:rgba(255,255,255,.4);transition:all .2s;}
+        .ffe-link:hover{color:var(--blue);background:var(--blue-pale);}
+
+        /* HERO */
+        .hiw-hero{min-height:60vh;display:flex;align-items:center;justify-content:center;padding:130px 52px 80px;text-align:center;position:relative;overflow:hidden;z-index:1;}
+        .hiw-hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(33,119,209,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(33,119,209,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%);}
+        .hiw-hero-inner{position:relative;z-index:1;max-width:700px;}
+        .hiw-pill{display:inline-flex;align-items:center;gap:8px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--gb);border-radius:100px;padding:6px 18px 6px 12px;font-size:.7rem;font-weight:600;color:var(--blue);letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--gs);margin-bottom:28px;opacity:0;animation:fup .6s ease .1s forwards;}
+        .pill-dot{width:5px;height:5px;background:var(--gold);border-radius:50%;box-shadow:0 0 8px var(--gold);animation:gp 2.5s ease infinite;}
+        .hiw-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(2.4rem,5vw,4rem);letter-spacing:-.04em;line-height:1.06;color:var(--text);margin-bottom:16px;opacity:0;animation:fup .6s ease .2s forwards;}
+        .hiw-h span{background:linear-gradient(135deg,var(--blue),var(--blue-m),var(--blue-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .hiw-sub{font-size:.95rem;color:var(--text2);line-height:1.8;max-width:480px;margin:0 auto 36px;opacity:0;animation:fup .6s ease .3s forwards;}
+        .hiw-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;opacity:0;animation:fup .6s ease .4s forwards;}
+        .cta-p{display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:white;padding:13px 30px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;text-decoration:none;box-shadow:0 6px 26px var(--blue-glow);transition:background .2s,transform .15s;}
+        .cta-p:hover{background:var(--blue-d);transform:translateY(-2px);}
+        .cta-g{display:inline-flex;align-items:center;gap:7px;color:var(--text2);font-size:.88rem;font-weight:500;text-decoration:none;padding:13px 22px;border-radius:100px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--gb);box-shadow:var(--gs);transition:color .2s,background .2s;}
+        .cta-g:hover{color:var(--blue);background:var(--glass2);}
+        @keyframes fup{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+
+        /* STEPS SECTION */
+        .steps-section{position:relative;z-index:1;padding:80px 52px;max-width:1060px;margin:0 auto;}
+        .section-eyebrow{display:flex;align-items:center;gap:12px;font-size:.63rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;}
+        .section-eyebrow::before{content:'';width:18px;height:1.5px;background:var(--gold);opacity:.5;}
+        .section-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(1.9rem,3vw,2.8rem);letter-spacing:-.03em;color:var(--text);margin-bottom:12px;line-height:1.1;}
+        .section-p{font-size:.88rem;color:var(--text2);max-width:440px;line-height:1.85;margin-bottom:60px;}
+        .steps-timeline{display:flex;flex-direction:column;}
+        .step-block{display:grid;grid-template-columns:80px 1fr;gap:0 32px;position:relative;}
+        .step-block:not(:last-child)::before{content:'';position:absolute;left:39px;top:80px;bottom:-20px;width:2px;background:linear-gradient(to bottom,var(--blue),rgba(33,119,209,.1));z-index:0;}
+        .step-num-col{display:flex;flex-direction:column;align-items:center;padding-top:10px;}
+        .step-circle{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;color:white;box-shadow:0 6px 20px var(--blue-glow);position:relative;z-index:1;flex-shrink:0;}
+        .step-content{padding:0 0 56px;}
+        .step-eyebrow{font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;margin-top:14px;}
+        .step-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:-.03em;color:var(--text);margin-bottom:10px;}
+        .step-p{font-size:.88rem;color:var(--text2);line-height:1.85;margin-bottom:20px;max-width:520px;}
+        .step-visual{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:20px;padding:22px 24px;box-shadow:var(--gsl);max-width:540px;position:relative;overflow:hidden;}
+        .step-visual::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--gold),transparent);}
+
+        /* Visual elements */
+        .av-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+        .av-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem;color:var(--text);}
+        .av-badge{font-size:.62rem;font-weight:600;color:var(--blue);background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);border-radius:100px;padding:3px 10px;}
+        .av-field{background:rgba(255,255,255,.75);border:1.5px solid rgba(33,119,209,.12);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:.8rem;color:var(--text);display:flex;align-items:center;justify-content:space-between;}
+        .av-field-label{font-size:.6rem;color:var(--muted);margin-bottom:1px;text-transform:uppercase;letter-spacing:.07em;}
+        .av-field-val{font-weight:600;}
+        .av-ai{display:flex;align-items:center;gap:8px;background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);border-radius:10px;padding:9px 12px;font-size:.75rem;color:var(--blue);margin-bottom:12px;}
+        .av-ai-dot{width:5px;height:5px;background:var(--blue);border-radius:50%;animation:pulse 1.5s ease infinite;flex-shrink:0;}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.3;transform:scale(.6);}}
+        .av-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+        .av-save{width:100%;background:var(--blue);color:white;border:none;padding:10px;border-radius:10px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 3px 12px var(--blue-glow);}
+        .vd-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+        .vd-stat{background:rgba(255,255,255,.65);border:1px solid var(--gb);border-radius:12px;padding:12px 14px;box-shadow:var(--gs);}
+        .vd-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.03em;color:var(--blue);}
+        .vd-stat-lbl{font-size:.62rem;color:var(--muted);margin-top:1px;}
+        .vd-bill{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.65);border:1px solid var(--gb);border-radius:12px;padding:11px 14px;margin-bottom:7px;box-shadow:var(--gs);}
+        .vd-bill-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text);}
+        .vd-bill-due{font-size:.62rem;color:var(--muted);}
+        .vd-chip{font-size:.64rem;font-weight:600;padding:3px 9px;border-radius:100px;margin-left:auto;white-space:nowrap;}
+        .chip-warn{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.2);}
+        .chip-ok{background:var(--blue-pale);color:var(--blue);border:1px solid rgba(33,119,209,.15);}
+        .vd-bill-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;color:var(--text);margin-left:8px;}
+        .vs-phone{max-width:300px;margin:0 auto;}
+        .vs-header{text-align:center;margin-bottom:16px;}
+        .vs-av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1rem;color:white;margin:0 auto 8px;box-shadow:0 4px 14px var(--blue-glow);}
+        .vs-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem;color:var(--text);}
+        .vs-sub{font-size:.64rem;color:var(--muted);}
+        .vs-bubble{background:linear-gradient(135deg,var(--blue),var(--blue-d));color:white;border-radius:16px 16px 4px 16px;padding:12px 14px;font-size:.78rem;line-height:1.6;box-shadow:0 4px 16px var(--blue-glow);margin-bottom:8px;}
+        .vs-bubble2{background:linear-gradient(135deg,var(--gold),#a07820);color:white;border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:.75rem;margin-left:20px;box-shadow:0 4px 14px rgba(195,154,53,.25);}
+        .vs-time{font-size:.6rem;color:var(--muted);text-align:center;margin-top:8px;}
+        .vp-grid{display:flex;flex-direction:column;gap:8px;}
+        .vp-notif{background:rgba(255,255,255,.72);backdrop-filter:blur(20px) saturate(2.5);border:1px solid rgba(255,255,255,.92);border-radius:13px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(33,119,209,.07),inset 0 1px 0 rgba(255,255,255,.95);}
+        .vp-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
+        .vp-app{font-size:.6rem;font-weight:700;color:var(--muted);letter-spacing:.04em;}
+        .vp-msg{font-size:.72rem;font-weight:600;color:var(--text);}
+        .vp-check{color:#22c55e;font-size:.95rem;font-weight:700;}
+
+        /* DASHBOARD PREVIEW */
+        .dash-preview-section{position:relative;z-index:1;padding:80px 52px;background:linear-gradient(180deg,rgba(33,119,209,.03) 0%,rgba(195,154,53,.02) 100%);border-top:1px solid var(--border);}
+        .dp-inner{max-width:1020px;margin:0 auto;}
+        .dp-header{max-width:500px;margin-bottom:52px;}
+        .dash-mock{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:24px;padding:24px;box-shadow:var(--gsl);position:relative;overflow:visible;}
+        .dm-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+        .dm-greeting{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-.03em;color:var(--text);}
+        .dm-addbtn{background:var(--blue);color:white;padding:7px 16px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.75rem;font-weight:700;border:none;box-shadow:0 3px 12px var(--blue-glow);}
+        .dm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+        .dm-stat{background:rgba(255,255,255,.65);border:1px solid var(--gb);border-radius:14px;padding:14px 16px;box-shadow:var(--gs);}
+        .dm-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.03em;color:var(--text);}
+        .dm-stat-lbl{font-size:.64rem;color:var(--muted);margin-top:1px;}
+        .dm-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;}
+        .dm-panel{background:rgba(255,255,255,.55);border:1px solid var(--gb);border-radius:16px;overflow:hidden;box-shadow:var(--gs);}
+        .dm-panel-h{padding:14px 16px 10px;border-bottom:1px solid var(--border);font-family:'Plus Jakarta Sans',sans-serif;font-size:.8rem;font-weight:700;color:var(--text);}
+        .dm-bill-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(33,119,209,.05);}
+        .dm-bill-row:last-child{border-bottom:none;}
+        .dm-bill-name{font-size:.78rem;font-weight:600;color:var(--text);flex:1;}
+        .dm-bill-chip{font-size:.6rem;font-weight:600;padding:2px 8px;border-radius:100px;}
+        .dm-bill-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.8rem;font-weight:700;color:var(--text);margin-left:6px;}
+        .annotation{position:absolute;z-index:10;display:flex;align-items:center;gap:8px;pointer-events:none;}
+        .ann-line{height:1px;background:var(--gold);opacity:.7;flex-shrink:0;}
+        .ann-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);flex-shrink:0;animation:gp 2s ease infinite;}
+        .ann-card{background:white;border:1px solid rgba(195,154,53,.25);border-radius:10px;padding:7px 12px;box-shadow:0 4px 16px rgba(195,154,53,.15);white-space:nowrap;}
+        .ann-card-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:.72rem;font-weight:700;color:var(--text);}
+        .ann-card-sub{font-size:.62rem;color:var(--muted);}
+
+        /* FAQ */
+        .faq-section{position:relative;z-index:1;padding:80px 52px;max-width:800px;margin:0 auto;}
+        .faq-list{margin-top:48px;display:flex;flex-direction:column;gap:10px;}
+        .faq-item{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:18px;overflow:hidden;box-shadow:var(--gs);transition:box-shadow .2s;}
+        .faq-item:hover{box-shadow:var(--gsl);}
+        .faq-q{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;cursor:pointer;gap:16px;}
+        .faq-q-text{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.92rem;color:var(--text);}
+        .faq-icon{width:28px;height:28px;border-radius:50%;background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--blue);flex-shrink:0;font-weight:700;transition:transform .3s,background .2s;}
+        .faq-icon.open{transform:rotate(45deg);background:var(--blue);color:white;}
+        .faq-a{overflow:hidden;transition:max-height .4s ease,padding .3s;max-height:0;padding:0 24px;}
+        .faq-a.open{max-height:300px;padding:0 24px 20px;}
+        .faq-a-text{font-size:.84rem;color:var(--text2);line-height:1.8;}
+
+        /* CTA STRIP */
+        .cta-strip{position:relative;z-index:1;margin:0 52px 80px;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,var(--blue) 0%,var(--blue-d) 50%,#1245a0 100%);padding:52px;text-align:center;box-shadow:0 20px 80px rgba(33,119,209,.25);}
+        .cta-strip::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;}
+        .cta-strip-inner{position:relative;z-index:1;}
+        .cta-strip-eyebrow{font-size:.65rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:16px;}
+        .cta-strip-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(1.8rem,3.5vw,2.8rem);letter-spacing:-.04em;color:white;margin-bottom:12px;line-height:1.1;}
+        .cta-strip-p{font-size:.88rem;color:rgba(255,255,255,.75);max-width:400px;margin:0 auto 32px;line-height:1.8;}
+        .cta-strip-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
+        .strip-btn-p{display:inline-flex;align-items:center;gap:8px;background:white;color:var(--blue);padding:13px 30px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:transform .15s,box-shadow .2s;}
+        .strip-btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.2);}
+        .strip-btn-g{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);color:white;padding:13px 24px;border-radius:100px;font-size:.88rem;font-weight:500;text-decoration:none;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(10px);transition:background .2s;}
+        .strip-btn-g:hover{background:rgba(255,255,255,.2);}
+
+        /* FOOTER */
+        .hiw-footer{position:relative;z-index:1;padding:32px 52px;border-top:1px solid var(--border);background:var(--glass);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+        .f-logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
+        .f-links{display:flex;gap:22px;}
+        .f-link{font-size:.75rem;color:var(--muted);text-decoration:none;transition:color .2s;}
+        .f-link:hover{color:var(--blue);}
+        .f-copy{font-size:.7rem;color:var(--muted);}
+
+        /* SCROLL REVEAL */
+        .reveal,.reveal-s{opacity:0;transition:opacity .85s cubic-bezier(.16,1,.3,1),transform .85s cubic-bezier(.16,1,.3,1);}
+        .reveal{transform:translateY(24px);}.reveal-s{transform:scale(.97) translateY(12px);}
+        .reveal.vis,.reveal-s.vis{opacity:1;transform:none;}
+        .d1{transition-delay:.1s;}.d2{transition-delay:.2s;}.d3{transition-delay:.3s;}.d4{transition-delay:.4s;}
+
+        @media(max-width:900px){.dm-grid{grid-template-columns:1fr;}.dm-stats{grid-template-columns:repeat(2,1fr);}.steps-section,.dash-preview-section,.faq-section{padding:60px 24px;}.cta-strip{margin:0 20px 60px;padding:36px 24px;}}
+        @media(max-width:640px){.hiw-nav{width:calc(100% - 28px);padding:0 14px;}.nl{display:none;}.hiw-hero{padding:100px 20px 60px;}.hiw-footer{padding:24px 20px;flex-direction:column;text-align:center;}.step-block{grid-template-columns:56px 1fr;gap:0 16px;}.vd-row{grid-template-columns:repeat(2,1fr);}.dm-stats{grid-template-columns:repeat(2,1fr);}}
+      `}</style>
+
+      <div className="bg-blob b1" />
+      <div className="bg-blob b2" />
+      <div className="bg-blob b3" />
+
+      {/* NAV */}
+      <nav className="hiw-nav">
+        <a href="/" className="logo">Nyra<span className="logo-gem" /></a>
+        <a href="https://financialfutureseducation.com/" className="ffe-link" target="_blank" rel="noreferrer">Financial Futures Education ↗</a>
+        <div className="nav-links">
+          <a href="/" className="nl">Home</a>
+          <a href="/how-it-works" className="nl active">How it works</a>
+          <a href="/#pricing" className="nl">Pricing</a>
+          <a href="/#pricing" className="nbtn">Get started</a>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="hiw-hero">
+        <div className="hiw-hero-grid" />
+        <div className="hiw-hero-inner">
+          <div className="hiw-pill"><span className="pill-dot" />How Nyra works</div>
+          <h1 className="hiw-h">Simple to set up.<br /><span>Effortless forever.</span></h1>
+          <p className="hiw-sub">From adding your first bill to never worrying about a late fee again — here&apos;s exactly how Nyra works, step by step.</p>
+          <div className="hiw-ctas">
+            <a href="/#pricing" className="cta-p">Start for $3/month →</a>
+            <a href="#steps" className="cta-g">See the steps ↓</a>
+          </div>
+        </div>
+      </section>
+
+      {/* STEPS */}
+      <section className="steps-section" id="steps">
+        <div className="section-eyebrow reveal" ref={el => addReveal(el, 0)}>The process</div>
+        <h2 className="section-h reveal d1" ref={el => addReveal(el, 1)}>Four steps to financial<br />peace of mind.</h2>
+        <p className="section-p reveal d2" ref={el => addReveal(el, 2)}>No learning curve. No app to maintain. Just a setup that takes 3 minutes and then runs itself.</p>
+
+        <div className="steps-timeline">
+
+          {/* Step 1 */}
+          <div className="step-block reveal" ref={el => addReveal(el, 3)}>
+            <div className="step-num-col"><div className="step-circle">1</div></div>
+            <div className="step-content">
+              <div className="step-eyebrow">Sign up</div>
+              <h3 className="step-h">Pick your plan, enter your details.</h3>
+              <p className="step-p">Choose the plan that fits your life — Basic for the essentials, Plus for most people, or Power if you track everything. Then enter your name, email, and phone number. Payment is handled securely through Stripe.</p>
+              <div className="step-visual">
+                <div className="av-header"><div className="av-title">Create your account</div><div className="av-badge">Step 1 of 3</div></div>
+                <div className="av-field"><div><div className="av-field-label">Name</div><div className="av-field-val">John Smith</div></div></div>
+                <div className="av-field"><div><div className="av-field-label">Phone</div><div className="av-field-val">+1 (416) 000-0000</div></div></div>
+                <div className="av-field" style={{ marginBottom: 14 }}><div><div className="av-field-label">Plan selected</div><div className="av-field-val" style={{ color: 'var(--blue)' }}>Plus — $5/month</div></div></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.72rem', color: 'var(--muted)', marginBottom: 12 }}>
+                  <span style={{ color: 'var(--blue)' }}>🔒</span> Secure · Encrypted · Private
+                </div>
+                <button className="av-save">Continue to payment →</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div className="step-block reveal d1" ref={el => addReveal(el, 4)}>
+            <div className="step-num-col"><div className="step-circle">2</div></div>
+            <div className="step-content">
+              <div className="step-eyebrow">Add your bills</div>
+              <h3 className="step-h">Add bills in seconds with AI assistance.</h3>
+              <p className="step-p">Head to your dashboard and start adding bills. Just type the bill name — Nyra&apos;s AI will immediately suggest the billing cycle, typical amount, and due date. Most people are done in under 3 minutes.</p>
+              <div className="step-visual">
+                <div className="av-header"><div className="av-title">Add a Bill</div><div className="av-badge">AI-powered</div></div>
+                <div className="av-field"><div><div className="av-field-label">Bill name</div><div className="av-field-val">Netflix</div></div></div>
+                <div className="av-ai"><div className="av-ai-dot" />✦ AI suggests: Netflix · Monthly · typically $18–$23/month</div>
+                <div className="av-grid">
+                  <div className="av-field" style={{ margin: 0 }}><div><div className="av-field-label">Amount</div><div className="av-field-val">$18.00</div></div></div>
+                  <div className="av-field" style={{ margin: 0 }}><div><div className="av-field-label">Due date</div><div className="av-field-val">12th of month</div></div></div>
+                </div>
+                <div className="av-grid" style={{ marginTop: 8, marginBottom: 12 }}>
+                  <div className="av-field" style={{ margin: 0 }}><div><div className="av-field-label">Cycle</div><div className="av-field-val">Monthly</div></div></div>
+                  <div className="av-field" style={{ margin: 0 }}><div><div className="av-field-label">Remind me</div><div className="av-field-val">3 days before</div></div></div>
+                </div>
+                <button className="av-save">Save Bill →</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="step-block reveal d2" ref={el => addReveal(el, 5)}>
+            <div className="step-num-col"><div className="step-circle">3</div></div>
+            <div className="step-content">
+              <div className="step-eyebrow">Nyra tracks everything</div>
+              <h3 className="step-h">Your dashboard keeps it all organised.</h3>
+              <p className="step-p">Every bill lives in your dashboard with its due date, amount, and how far away it is. Bills are colour-coded by urgency so you can see what needs attention at a glance. Due dates roll forward automatically — you never update anything.</p>
+              <div className="step-visual">
+                <div className="vd-row">
+                  <div className="vd-stat"><div className="vd-stat-val">3</div><div className="vd-stat-lbl">Bills tracked</div></div>
+                  <div className="vd-stat"><div className="vd-stat-val">$1,903</div><div className="vd-stat-lbl">Due this month</div></div>
+                  <div className="vd-stat"><div className="vd-stat-val" style={{ color: 'var(--success)' }}>0</div><div className="vd-stat-lbl">Late fees</div></div>
+                </div>
+                {[['🏠','Rent','chip-warn','Due in 3d','$1,800'],['🎬','Netflix','chip-ok','Due in 12d','$18'],['📱','Rogers','chip-ok','Due in 18d','$85']].map(([icon,name,cls,chip,amt]) => (
+                  <div key={name} className="vd-bill">
+                    <div>{icon}</div>
+                    <div><div className="vd-bill-name">{name}</div><div className="vd-bill-due">Monthly</div></div>
+                    <div className={`vd-chip ${cls}`}>{chip}</div>
+                    <div className="vd-bill-amt">{amt}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Step 4 */}
+          <div className="step-block reveal d3" ref={el => addReveal(el, 6)}>
+            <div className="step-num-col"><div className="step-circle" style={{ background: 'linear-gradient(135deg,var(--gold),#a07820)' }}>4</div></div>
+            <div className="step-content">
+              <div className="step-eyebrow" style={{ color: 'var(--gold)' }}>The payoff</div>
+              <h3 className="step-h">A text arrives. You pay. Done.</h3>
+              <p className="step-p">Nyra sends you a personal SMS exactly when you asked — 1, 3, 5, or 7 days before each bill is due. No app to open, no notification to find. Just a text on your phone. You pay the bill and watch every month close with zero late fees.</p>
+              <div className="step-visual">
+                <div className="vs-phone">
+                  <div className="vs-header">
+                    <div className="vs-av">N</div>
+                    <div className="vs-name">Nyra</div>
+                    <div className="vs-sub">Bill reminder service</div>
+                  </div>
+                  <div className="vs-bubble">
+                    👋 Hey Alex! Your <strong>Rent</strong> of <strong>$1,800</strong> is due in <strong>3 days</strong> on March 1st.<br /><br />Don&apos;t get caught off guard — you&apos;ve got this. 💙
+                  </div>
+                  <div className="vs-bubble2">— Nyra · Never miss a bill.</div>
+                  <div className="vs-time">Today · 9:00 AM</div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: 16, paddingTop: 14 }}>
+                  <div style={{ fontSize: '.7rem', fontWeight: 600, color: 'var(--muted)', letterSpacing: '.08em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 10 }}>The result — every bill, paid on time</div>
+                  <div className="vp-grid">
+                    {[['🏠','rgba(195,154,53,.1)','Rent','$1,800'],['🎬','rgba(229,9,20,.09)','Netflix','$18.00'],['📱','rgba(33,119,209,.09)','Rogers','$85.00']].map(([icon,bg,name,amt]) => (
+                      <div key={name} className="vp-notif">
+                        <div className="vp-icon" style={{ background: bg }}>{icon}</div>
+                        <div style={{ flex: 1 }}><div className="vp-app">{name}</div><div className="vp-msg">Payment successful · {amt}</div></div>
+                        <div className="vp-check">✓</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ANNOTATED DASHBOARD PREVIEW */}
+      <section className="dash-preview-section" id="dashboard-preview">
+        <div className="dp-inner">
+          <div className="dp-header">
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 7)}>The dashboard</div>
+            <h2 className="section-h reveal d1" ref={el => addReveal(el, 8)}>Everything in one place.<br />Nothing you don&apos;t need.</h2>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 9)} style={{ marginBottom: 0 }}>Nyra&apos;s dashboard is clean, fast, and built around one job: showing you what&apos;s due and when.</p>
+          </div>
+          <div className="dash-mock reveal-s d1" ref={el => addReveal(el, 10)}>
+            {/* Annotations */}
+            <div className="annotation" style={{ top: -18, left: 80 }}>
+              <div className="ann-dot" /><div className="ann-line" style={{ width: 40 }} />
+              <div className="ann-card"><div className="ann-card-title">Personalised greeting</div><div className="ann-card-sub">Updates based on time of day</div></div>
+            </div>
+            <div className="annotation" style={{ top: 72, right: -10, flexDirection: 'row-reverse' }}>
+              <div className="ann-dot" /><div className="ann-line" style={{ width: 30 }} />
+              <div className="ann-card"><div className="ann-card-title">Your stats at a glance</div><div className="ann-card-sub">Bills, total due, late fees, reminders</div></div>
+            </div>
+            <div className="annotation" style={{ bottom: 60, left: -10, flexDirection: 'row-reverse' }}>
+              <div className="ann-dot" /><div className="ann-line" style={{ width: 24 }} />
+              <div className="ann-card"><div className="ann-card-title">Colour-coded urgency</div><div className="ann-card-sub">Amber = due soon · Blue = on track</div></div>
+            </div>
+            {/* Mock UI */}
+            <div className="dm-topbar">
+              <div className="dm-greeting">Good morning, Alex 👋</div>
+              <button className="dm-addbtn">＋ Add Bill</button>
+            </div>
+            <div className="dm-stats">
+              {[['3','Bills tracked'],['$1,903','Due this month'],['0','Late fees'],['3','Reminders sent']].map(([val,lbl],i) => (
+                <div key={i} className="dm-stat"><div className="dm-stat-val" style={lbl==='Late fees'?{color:'var(--success)'}:{}}>{val}</div><div className="dm-stat-lbl">{lbl}</div></div>
+              ))}
+            </div>
+            <div className="dm-grid">
+              <div className="dm-panel">
+                <div className="dm-panel-h">Your Bills</div>
+                {[['🏠','Rent','chip-warn','Due in 3d','$1,800'],['🎬','Netflix','chip-ok','Due in 12d','$18'],['📱','Rogers','chip-ok','Due in 18d','$85']].map(([icon,name,cls,chip,amt]) => (
+                  <div key={name} className="dm-bill-row">
+                    <span>{icon}</span><div className="dm-bill-name">{name}</div>
+                    <div className={`dm-bill-chip ${cls}`} style={cls==='chip-warn'?{background:'rgba(245,158,11,.12)',color:'#f59e0b'}:{background:'var(--blue-pale)',color:'var(--blue)'}}>{chip}</div>
+                    <div className="dm-bill-amt">{amt}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="dm-panel">
+                <div className="dm-panel-h">Coming Up</div>
+                {[['Rent · Mar 1','Reminder: Feb 26 at 9am'],['Netflix · Mar 12','Reminder: Mar 9 at 9am'],['Rogers · Mar 18','Reminder: Mar 13 at 9am']].map(([title,sub]) => (
+                  <div key={title} className="dm-bill-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                    <div style={{ fontSize: '.78rem', fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+                    <div style={{ fontSize: '.64rem', color: 'var(--muted)' }}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="faq-section">
+        <div className="section-eyebrow reveal" ref={el => addReveal(el, 11)}>Common questions</div>
+        <h2 className="section-h reveal d1" ref={el => addReveal(el, 12)}>Everything you<br />might be wondering.</h2>
+        <div className="faq-list">
+          {FAQS.map((faq, i) => (
+            <div key={i} className="faq-item reveal" ref={el => addReveal(el, 13 + i)}>
+              <div className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
+                <div className="faq-q-text">{faq.q}</div>
+                <div className={`faq-icon${openFaq === i ? ' open' : ''}`}>+</div>
+              </div>
+              <div className={`faq-a${openFaq === i ? ' open' : ''}`}>
+                <p className="faq-a-text">{faq.a}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA STRIP */}
+      <div className="cta-strip reveal" ref={el => addReveal(el, 20)}>
+        <div className="cta-strip-inner">
+          <div className="cta-strip-eyebrow">Ready to get started?</div>
+          <h2 className="cta-strip-h">Three minutes to<br />never miss a bill again.</h2>
+          <p className="cta-strip-p">Join Canadians who&apos;ve stopped stressing about due dates. Plans from $3/month — and 20% goes to Financial Futures Education.</p>
+          <div className="cta-strip-btns">
+            <a href="/#pricing" className="strip-btn-p">Get started today →</a>
+            <a href="/" className="strip-btn-g">← Back to Nyra</a>
+          </div>
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <footer className="hiw-footer">
+        <a href="/" className="f-logo">Nyra<span style={{ color: 'var(--gold)' }}>.</span></a>
+        <div className="f-links">
+          <a href="https://financialfutureseducation.com/" className="f-link" target="_blank" rel="noreferrer">Financial Futures Education ↗</a>
+          <a href="/#features" className="f-link">Features</a>
+          <a href="/#pricing" className="f-link">Pricing</a>
+        </div>
+        <div className="f-copy">© 2026 Financial Futures Education</div>
+      </footer>
+    </>
+  );
+}
