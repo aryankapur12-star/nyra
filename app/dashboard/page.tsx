@@ -176,6 +176,7 @@ export default function DashboardPage(){
     setTimeout(()=>{for(let i=0;i<50;i++)particles.current.push(mkP(cv.width*.1,cv.height*.5));},150);
     setTimeout(()=>{for(let i=0;i<50;i++)particles.current.push(mkP(cv.width*.9,cv.height*.5));},300);
     function draw(){
+      if(!ctx)return;
       ctx.clearRect(0,0,cv.width,cv.height);
       particles.current=particles.current.filter(p=>p.life>0);
       particles.current.forEach(p=>{p.vx*=p.drag;p.vy*=p.drag;p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.rot+=p.rs;p.life-=p.decay;ctx.save();ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.translate(p.x,p.y);ctx.rotate(p.rot);if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();}else{ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);}ctx.restore();});
