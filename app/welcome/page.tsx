@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const PLAN_DETAILS: Record<string, { sub: string; bills: number | string; saved: number }> = {
@@ -36,6 +36,10 @@ function makeParticle(x: number, y: number, burst: boolean) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function WelcomePage() {
+  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'Inter,sans-serif',color:'#7a90aa'}}>Loading...</div>}><WelcomeInner/></Suspense>;
+}
+
+function WelcomeInner() {
   const searchParams = useSearchParams();
   const name  = searchParams.get('name')  || '';
   const plan  = searchParams.get('plan')  || 'Plus';

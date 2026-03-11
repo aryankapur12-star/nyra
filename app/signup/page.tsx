@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface FormData {
@@ -20,6 +20,10 @@ const PLAN_DETAILS: Record<string, { sub: string; bills: number | string }> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SignupPage() {
+  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'Inter,sans-serif',color:'#7a90aa'}}>Loading...</div>}><SignupInner/></Suspense>;
+}
+
+function SignupInner() {
   const searchParams = useSearchParams();
   const plan  = searchParams.get('plan')  || 'Plus';
   const price = parseInt(searchParams.get('price') || '5');
