@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -93,6 +93,10 @@ function mkP(x:number,y:number){
 }
 
 export default function DashboardPage(){
+  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'Inter,sans-serif',color:'#7a90aa'}}>Loading...</div>}><DashboardInner/></Suspense>;
+}
+
+function DashboardInner(){
   const sp=useSearchParams();const urlName=sp.get('name')||'';
   const[userName,setUserName]=useState(urlName||'there');
   const[userEmail,setUserEmail]=useState('');
