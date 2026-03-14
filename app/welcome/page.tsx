@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-const PLAN_DETAILS: Record<string, { sub: string; bills: number | string; saved: number }> = {
-  Basic: { sub: 'Up to 5 bills tracked',   bills: 5,   saved: 60 },
-  Plus:  { sub: 'Up to 15 bills tracked',  bills: 15,  saved: 120 },
-  Power: { sub: 'Unlimited bills tracked', bills: '∞', saved: 200 },
+const PLAN_DETAILS: Record<string, { sub: string; bills: number | string }> = {
+  Basic: { sub: 'Up to 5 bills tracked',   bills: 5 },
+  Plus:  { sub: 'Up to 15 bills tracked',  bills: 15 },
+  Power: { sub: 'Unlimited bills tracked', bills: '∞' },
 };
 
 // ─── Confetti engine ──────────────────────────────────────────────────────────
@@ -54,7 +54,6 @@ function WelcomeInner() {
 
   const [tick1, setTick1] = useState('0');
   const [tick2, setTick2] = useState('0');
-  const [tick3, setTick3] = useState('$0');
 
   // ── Confetti ────────────────────────────────────────────────────────────────
   function animate(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
@@ -129,7 +128,6 @@ function WelcomeInner() {
     // Start counters
     countUp(setTick1, 0,             '',  600,  2000);
     countUp(setTick2, details.bills, '',  900,  2100);
-    countUp(setTick3, details.saved, '$', 1100, 2200);
 
     return () => {
       window.removeEventListener('resize', resize);
@@ -354,8 +352,8 @@ function WelcomeInner() {
             <div className="ticker-lbl">Bills you can<br />track</div>
           </div>
           <div className="ticker-card">
-            <div className="ticker-val">{tick3}</div>
-            <div className="ticker-lbl">Avg. saved<br />per year</div>
+            <div className="ticker-val">100</div>
+            <div className="ticker-lbl">Money IQ<br />to unlock</div>
           </div>
         </div>
 

@@ -580,8 +580,8 @@ export default function LandingPage() {
       {/* MARQUEE */}
       <div className="marquee-wrap">
         <div className="marquee-track">
-          {['SMS Reminders','AI Suggestions','Auto-Rolling Dates','Cancel Anytime','No App Required','Financial Futures Education','Credit Card Cycles','20% to FFE',
-            'SMS Reminders','AI Suggestions','Auto-Rolling Dates','Cancel Anytime','No App Required','Financial Futures Education','Credit Card Cycles','20% to FFE'].map((item, i) => (
+          {['SMS Reminders','AI Financial Coach','Payday Cashflow','Credit Card Cycles','Money IQ Score','Badge System','Cancel Anytime','20% to FFE','Analytics Dashboard','Statement Upload',
+            'SMS Reminders','AI Financial Coach','Payday Cashflow','Credit Card Cycles','Money IQ Score','Badge System','Cancel Anytime','20% to FFE','Analytics Dashboard','Statement Upload'].map((item, i) => (
             <div key={i} className="m-item"><span className="m-gem">✦</span>{item}</div>
           ))}
         </div>
@@ -762,9 +762,9 @@ export default function LandingPage() {
           <p className="sec-p reveal d2">Pick the plan that fits your life. Every plan helps fund financial literacy across Canada.</p>
           <div className="plans-grid">
             {[
-              { name: 'Basic', sub: 'Up to 5 bills tracked', price: 3, features: ['Up to 5 bills','SMS reminders','Custom reminder timing','Auto-rolling dates'], featured: false, delay: 'd1' },
-              { name: 'Plus', sub: 'Up to 15 bills tracked', price: 5, features: ['Up to 15 bills','SMS reminders','Custom reminder timing','Auto-rolling dates','AI billing suggestions','Credit card cycles'], featured: true, delay: 'd2' },
-              { name: 'Power', sub: 'Unlimited bills', price: 8, features: ['Unlimited bills','SMS reminders','Custom reminder timing','Auto-rolling dates','AI billing suggestions','Credit card cycles'], featured: false, delay: 'd3' },
+              { name: 'Basic', sub: 'Up to 5 bills tracked', price: 3, features: ['Up to 5 bills','SMS reminders','Custom reminder timing','Money IQ score','Starter badges'], featured: false, delay: 'd1' },
+              { name: 'Plus', sub: 'Up to 15 bills tracked', price: 5, features: ['Up to 15 bills','Everything in Basic','AI financial coach (10 msg/mo)','Statement upload for credit cards','Payday cashflow timeline','Analytics & spending charts','Full badge collection + sharing','Learn tab with AI insights'], featured: true, delay: 'd2' },
+              { name: 'Power', sub: 'Unlimited bills', price: 8, features: ['Unlimited bills','Everything in Plus','Unlimited AI coach messages','AI memory between sessions','Proactive AI insights','Secret badges','Priority support'], featured: false, delay: 'd3' },
             ].map(({ name, sub, price, features, featured, delay }) => (
               <div key={name} className={`plan-card reveal ${delay}${featured ? ' featured' : ''}`}>
                 <div className="plan-shine" />
