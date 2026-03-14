@@ -173,7 +173,7 @@ export default function AnalyticsPage(){
         </div>
       </aside>
       <main className="main">
-      <MobileNav activePage="/analytics" userName={userName} userPlan={userPlan}/>
+      
         <div className="gate-wrap">
           <div className="gate-em">📊</div>
           <div className="gate-title">Analytics is a Plus feature</div>
