@@ -567,7 +567,7 @@ export default function AchievementsPage(){
     </aside>
 
     <main className="main">
-      <MobileNav activePage="/achievements" userName={userName} userPlan={userPlan}/>
+
 
       {/* XP HERO */}
       <div className="xp-hero">
