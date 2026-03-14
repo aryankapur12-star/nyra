@@ -643,12 +643,12 @@ function DashboardInner(){
     <aside className="sb">
       <div className="sb-logo"><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></div>
       <div className="nav-lbl">Menu</div>
-      <div className="ni on"><span className="ni-ic">📋</span>My Bills</div>
-      <div className="ni"><span className="ni-ic">🔔</span>Reminders</div>
-      <div className="ni"><span className="ni-ic">🏆</span>Achievements</div>
+      <a className="ni on" href="/dashboard"><span className="ni-ic">📋</span>My Bills</a>
+      <a className="ni" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
+      <a className="ni" href="/achievements"><span className="ni-ic">🏆</span>Achievements</a>
       <a className="ni" href="/learn"><span className="ni-ic">🧠</span>Learn</a>
-      <div className="ni"><span className="ni-ic">📊</span>Analytics</div>
-      <div className="ni"><span className="ni-ic">⚙️</span>Settings</div>
+      <a className="ni" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
+      <a className="ni" href="/settings"><span className="ni-ic">⚙️</span>Settings</a>
       <div className="nav-lbl">Resources</div>
       <a className="ni" href="https://financialfutureseducation.com/" target="_blank" rel="noreferrer"><span className="ni-ic">🎓</span>FFE Website</a>
       <div className="sb-bot">
