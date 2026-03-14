@@ -1,7 +1,8 @@
-'use client';
+a'use client';
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
 interface ReminderLog { id:string;bill_name:string;amount:number;sent_at:string;message?:string; }
@@ -189,6 +190,7 @@ export default function RemindersPage(){
     </aside>
 
     <main className="main">
+      <MobileNav activePage="/reminders" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
         <div className="page-eyebrow">Reminder management</div>
         <div className="page-title">🔔 Reminders</div>

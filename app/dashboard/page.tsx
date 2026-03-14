@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number;end_of_month?:boolean; }
 interface ReminderLog { id:string;bill_name:string;amount:number;sent_at:string; }
@@ -665,6 +666,7 @@ function DashboardInner(){
 
     {/* MAIN */}
     <main className="main">
+      <MobileNav activePage="/dashboard" userName={userName} userPlan={userPlan}/>
       {/* Topbar */}
       <div className="topbar">
         <div ref={rGreeting}><div className="tb-greet">{greet}, {userName} 👋</div><div className="tb-date">{today}</div></div>

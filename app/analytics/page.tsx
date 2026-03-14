@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
 
@@ -171,6 +172,7 @@ export default function AnalyticsPage(){
         </div>
       </aside>
       <main className="main">
+      <MobileNav activePage="/analytics" userName={userName} userPlan={userPlan}/>
         <div className="gate-wrap">
           <div className="gate-em">📊</div>
           <div className="gate-title">Analytics is a Plus feature</div>

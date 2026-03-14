@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
 
@@ -240,6 +241,7 @@ export default function LearnPage(){
 
     {/* MAIN */}
     <main className="main">
+      <MobileNav activePage="/learn" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
         <div className="page-eyebrow">Financial literacy</div>
         <div className="page-title">🧠 Learn</div>

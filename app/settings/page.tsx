@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 type Tab = 'profile'|'notifications'|'plan'|'security';
 
@@ -222,6 +223,7 @@ export default function SettingsPage(){
     </aside>
 
     <main className="main">
+      <MobileNav activePage="/settings" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
         <div className="page-eyebrow">Account</div>
         <div className="page-title">⚙️ Settings</div>

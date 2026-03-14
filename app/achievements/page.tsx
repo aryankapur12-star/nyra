@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { MobileNav } from '@/components/mobile-nav';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
@@ -317,6 +318,7 @@ export default function AchievementsPage(){
     </aside>
 
     <main className="main">
+      <MobileNav activePage="/achievements" userName={userName} userPlan={userPlan}/>
 
       {/* XP HERO */}
       <div className="xp-hero">
