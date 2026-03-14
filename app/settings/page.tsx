@@ -470,7 +470,6 @@ export default function SettingsPage(){
     </aside>
 
     <main className="main">
-      <MobileNav activePage="/settings" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
         <div className="page-eyebrow">Account</div>
         <div className="page-title">⚙️ Settings</div>

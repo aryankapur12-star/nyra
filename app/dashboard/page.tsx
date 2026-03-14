@@ -916,7 +916,6 @@ function DashboardInner(){
 
     {/* MAIN */}
     <main className="main">
-      <MobileNav activePage="/dashboard" userName={userName} userPlan={userPlan}/>
       {/* Topbar */}
       <div className="topbar">
         <div ref={rGreeting}><div className="tb-greet">{greet}, {userName} 👋</div><div className="tb-date">{today}</div></div>

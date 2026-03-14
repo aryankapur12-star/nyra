@@ -490,7 +490,6 @@ export default function LearnPage(){
 
     {/* MAIN */}
     <main className="main">
-      <MobileNav activePage="/learn" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
         <div className="page-eyebrow">Financial literacy</div>
         <div className="page-title">🧠 Learn</div>

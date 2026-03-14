@@ -4,11 +4,42 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
-interface ReminderLog { id:string;bill_name:string;amount:number;sent_at:string;message?:string; }
+
+// ─── Category detection ───────────────────────────────────────────────────────
+const CAT_MAP: Record<string,{label:string;emoji:string;color:string}> = {
+  housing:     {label:'Housing',      emoji:'🏠', color:'#2177d1'},
+  telecom:     {label:'Telecom',      emoji:'📱', color:'#7c3aed'},
+  streaming:   {label:'Streaming',    emoji:'📺', color:'#e11d48'},
+  utilities:   {label:'Utilities',    emoji:'💡', color:'#f59e0b'},
+  insurance:   {label:'Insurance',    emoji:'🛡️', color:'#0891b2'},
+  subscriptions:{label:'Subscriptions',emoji:'🔄',color:'#059669'},
+  fitness:     {label:'Fitness',      emoji:'💪', color:'#dc2626'},
+  finance:     {label:'Finance',      emoji:'💳', color:'#c39a35'},
+  other:       {label:'Other',        emoji:'📋', color:'#7a90aa'},
+};
+
+const CAT_KEYWORDS: Record<string,string[]> = {
+  housing:      ['rent','mortgage','condo','strata','housing'],
+  telecom:      ['rogers','bell','telus','fido','virgin','koodo','freedom','public mobile','phone','mobile','internet','wifi','cable'],
+  streaming:    ['netflix','disney','crave','amazon prime','apple tv','hulu','spotify','youtube','tidal','deezer'],
+  utilities:    ['hydro','gas','water','electricity','enbridge','utility','heat'],
+  insurance:    ['insurance','primmum','intact','belairdirect','sunlife','manulife','coverage'],
+  subscriptions:['subscription','amazon','icloud','google one','dropbox','adobe','microsoft','office 365'],
+  fitness:      ['gym','goodlife','planet fitness','ymca','fitness','yoga','peloton'],
+  finance:      ['credit card','visa','mastercard','amex','loan','line of credit','loc','cibc','rbc','td','bmo','scotiabank','tangerine'],
+};
+
+function detectCategory(name:string):string {
+  const lower = name.toLowerCase();
+  for(const[cat,keywords] of Object.entries(CAT_KEYWORDS)){
+    if(keywords.some(k=>lower.includes(k))) return cat;
+  }
+  return 'other';
+}
 
 function daysUntil(d:string){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+'T00:00:00').getTime()-t.getTime())/86400000);}
-function fmtDate(d:string){return new Date(d+'T00:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'});}
-function fmtDateTime(d:string){return new Date(d).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'});}
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const SIDEBAR_STYLES = `
   .sb{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:50;background:var(--glass);backdrop-filter:blur(28px) saturate(2);border-right:1px solid var(--gb);display:flex;flex-direction:column;padding:24px 16px;box-shadow:4px 0 24px rgba(33,119,209,.06);}
@@ -32,50 +63,130 @@ const SIDEBAR_STYLES = `
   .u-name{font-size:.8rem;font-weight:600;color:var(--text);}
 `;
 
-export default function RemindersPage(){
+export default function AnalyticsPage(){
   const[userName,setUserName]=useState('there');
   const[mobOpen,setMobOpen]=useState(false);
   useEffect(()=>{document.body.style.overflow=mobOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[ mobOpen]);
   const[userPlan,setUserPlan]=useState('Plus');
   const[bills,setBills]=useState<Bill[]>([]);
-  const[reminders,setReminders]=useState<ReminderLog[]>([]);
   const[loading,setLoading]=useState(true);
-  const[editingBill,setEditingBill]=useState<string|null>(null);
-  const[editRemind,setEditRemind]=useState('3');
-  const[editRemind2,setEditRemind2]=useState('');
-  const[saving,setSaving]=useState(false);
-  const[saved,setSaved]=useState<string|null>(null);
-  const[activeTab,setActiveTab]=useState<'upcoming'|'history'>('upcoming');
+  const[catOverrides,setCatOverrides]=useState<Record<string,string>>({});
+  const[editingCat,setEditingCat]=useState<string|null>(null);
 
   useEffect(()=>{
     async function load(){
       const{data:{user}}=await supabase.auth.getUser();if(!user)return;
       const{data:prof}=await supabase.from('profiles').select('full_name,plan').eq('id',user.id).single();
       if(prof){setUserName(prof.full_name?.split(' ')[0]||'there');setUserPlan(prof.plan||'Plus');}
-      const{data:bd}=await supabase.from('bills').select('*').eq('user_id',user.id).order('due_date',{ascending:true});
-      const{data:rd}=await supabase.from('reminder_logs').select('*').eq('user_id',user.id).order('sent_at',{ascending:false});
-      setBills(bd||[]);setReminders(rd||[]);setLoading(false);
+      const{data:bd}=await supabase.from('bills').select('*').eq('user_id',user.id);
+      setBills(bd||[]);setLoading(false);
+      const saved=localStorage.getItem('nyra_cat_overrides');
+      if(saved) setCatOverrides(JSON.parse(saved));
     }
     load();
   },[]);
 
-  function startEdit(bill:Bill){
-    setEditingBill(bill.id);
-    setEditRemind(String(bill.remind_days_before));
-    setEditRemind2('');
-  }
-
-  async function saveEdit(bill:Bill){
-    setSaving(true);
-    await supabase.from('bills').update({remind_days_before:parseInt(editRemind)}).eq('id',bill.id);
-    setBills(prev=>prev.map(b=>b.id===bill.id?{...b,remind_days_before:parseInt(editRemind)}:b));
-    setEditingBill(null);setSaving(false);setSaved(bill.id);
-    setTimeout(()=>setSaved(null),2000);
+  function getBillCat(bill:Bill):string { return catOverrides[bill.id]||detectCategory(bill.name); }
+  function overrideCat(billId:string,cat:string){
+    const updated={...catOverrides,[billId]:cat};
+    setCatOverrides(updated);
+    localStorage.setItem('nyra_cat_overrides',JSON.stringify(updated));
+    setEditingCat(null);
   }
 
   const isPlus=userPlan!=='Basic';
-  const upcoming=bills.filter(b=>{const d=daysUntil(b.due_date);return d>=0&&d<=7;}).sort((a,b)=>daysUntil(a.due_date)-daysUntil(b.due_date));
-  const allBillsWithReminders=bills.map(b=>({...b,reminderDate:daysUntil(b.due_date)-b.remind_days_before}));
+  const totalMonthly=bills.reduce((s,b)=>s+b.amount,0);
+  const projectedAnnual=totalMonthly*12;
+  const avgPerBill=bills.length>0?totalMonthly/bills.length:0;
+
+  // Category breakdown
+  const catTotals: Record<string,number>={};
+  bills.forEach(b=>{const c=getBillCat(b);catTotals[c]=(catTotals[c]||0)+b.amount;});
+  const catEntries=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+
+  // Donut chart
+  const donutR=60,donutC=2*Math.PI*donutR;
+  let donutOffset=0;
+  const donutSlices=catEntries.map(([cat,amt])=>{
+    const pct=amt/totalMonthly;
+    const dash=pct*donutC;
+    const slice={cat,amt,pct,dash,offset:donutOffset,color:CAT_MAP[cat]?.color||'#7a90aa'};
+    donutOffset+=dash;
+    return slice;
+  });
+
+  // Line chart — simulate 6 months of data based on current bills
+  const now=new Date();
+  const lineData=Array.from({length:6},(_,i)=>{
+    const m=new Date(now.getFullYear(),now.getMonth()-5+i,1);
+    const variation=0.85+Math.random()*0.3;
+    return{month:MONTHS[m.getMonth()],amount:Math.round(totalMonthly*variation)};
+  });
+  const maxLine=Math.max(...lineData.map(d=>d.amount),1);
+  const lineW=500,lineH=120,linePad=20;
+  const points=lineData.map((d,i)=>({
+    x:linePad+(i/(lineData.length-1))*(lineW-linePad*2),
+    y:lineH-linePad-(d.amount/maxLine)*(lineH-linePad*2),
+    ...d
+  }));
+  const pathD=points.map((p,i)=>i===0?`M${p.x},${p.y}`:`L${p.x},${p.y}`).join(' ');
+  const areaD=`${pathD} L${points[points.length-1].x},${lineH-linePad} L${points[0].x},${lineH-linePad} Z`;
+
+  if(!isPlus){
+    return(<>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500&display=swap');
+        :root{--blue:#2177d1;--blue-d:#1658a8;--blue-m:#3a8ee0;--blue-pale:rgba(33,119,209,0.08);--blue-glow:rgba(33,119,209,0.18);--gold:#c39a35;--gold-pale:rgba(195,154,53,0.09);--bg:#eef3fb;--text:#0c1524;--text2:#3a4f6a;--muted:#7a90aa;--border:rgba(33,119,209,0.1);--success:#22c55e;--warn:#f59e0b;--danger:#ef4444;--glass:rgba(255,255,255,0.62);--glass2:rgba(255,255,255,0.80);--gb:rgba(255,255,255,0.86);--gs:0 4px 24px rgba(33,119,209,.08),0 1px 4px rgba(0,0,0,.04),inset 0 1px 0 rgba(255,255,255,.9);}
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+        .blob{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;}
+        .b1{width:600px;height:600px;background:radial-gradient(circle,rgba(33,119,209,.09) 0%,transparent 70%);top:-150px;left:-150px;}
+        .b2{width:450px;height:450px;background:radial-gradient(circle,rgba(195,154,53,.07) 0%,transparent 70%);bottom:0;right:-100px;}
+        ${SIDEBAR_STYLES}
+        @keyframes gp{0%,100%{box-shadow:0 0 6px var(--gold);}50%{box-shadow:0 0 14px var(--gold),0 0 24px rgba(195,154,53,.3);}}
+        .main{margin-left:240px;padding:28px 32px;min-height:100vh;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;}
+        .gate-wrap{max-width:520px;text-align:center;}
+        @keyframes fu{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+        .gate-wrap{opacity:0;animation:fu .5s ease .1s forwards;}
+        .gate-em{font-size:4rem;margin-bottom:20px;}
+        .gate-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.8rem;letter-spacing:-.04em;color:var(--text);margin-bottom:10px;}
+        .gate-sub{font-size:.9rem;color:var(--text2);line-height:1.75;margin-bottom:28px;}
+        .gate-features{display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left;}
+        .gate-feat{display:flex;align-items:center;gap:12px;background:var(--glass);border:1px solid var(--gb);border-radius:14px;padding:14px 16px;font-size:.84rem;color:var(--text2);}
+        .gate-feat-ic{font-size:1.2rem;flex-shrink:0;}
+        .gate-btn{background:var(--blue);color:white;border:none;padding:14px 36px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;box-shadow:0 6px 20px var(--blue-glow);}
+        @media(max-width:700px){.sb{display:none;}.main{margin-left:0;}}
+      `}</style>
+      <div className="blob b1"/><div className="blob b2"/>
+      <aside className="sb">
+        <div className="sb-logo"><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></div>
+        <div className="nav-lbl">Menu</div>
+        <a className="ni" href="/dashboard"><span className="ni-ic">📋</span>My Bills</a>
+        <a className="ni" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
+        <div className="ni"><span className="ni-ic">🏆</span>Achievements</div>
+        <a className="ni" href="/learn"><span className="ni-ic">🧠</span>Learn</a>
+        <a className="ni on" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
+        <div className="ni"><span className="ni-ic">⚙️</span>Settings</div>
+        <div className="sb-bot">
+          <div className="plan-pill"><div><div className="pp-name">Basic Plan</div><div className="pp-ct">Analytics locked</div></div><div className="pp-badge">Upgrade</div></div>
+          <div className="u-row"><div className="u-av">{userName[0]?.toUpperCase()}</div><div><div className="u-name">{userName}</div></div></div>
+        </div>
+      </aside>
+      <main className="main">
+        <div className="gate-wrap">
+          <div className="gate-em">📊</div>
+          <div className="gate-title">Analytics is a Plus feature</div>
+          <div className="gate-sub">Upgrade to Plus to unlock deep insights into your spending — charts, category breakdowns, projections, and more.</div>
+          <div className="gate-features">
+            {[['📈','Monthly spending line chart — see your trends over time'],['🍩','Bill category donut chart — where does your money go?'],['🎯','Projected annual spend — plan ahead'],['🏷️','Auto-categorized bills with override — customize your breakdown']].map(([ic,txt])=>(
+              <div key={txt} className="gate-feat"><span className="gate-feat-ic">{ic}</span><span>{txt}</span></div>
+            ))}
+          </div>
+          <button className="gate-btn" onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>Upgrade to Plus — $5/mo →</button>
+        </div>
+      </main>
+    </>);
+  }
 
   return(<>
     <style>{`
@@ -89,79 +200,53 @@ export default function RemindersPage(){
       @keyframes bd1{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,50px)}}
       @keyframes bd2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,-30px)}}
       ${SIDEBAR_STYLES}
+      @keyframes gp{0%,100%{box-shadow:0 0 6px var(--gold);}50%{box-shadow:0 0 14px var(--gold),0 0 24px rgba(195,154,53,.3);}}
       .main{margin-left:240px;padding:28px 32px;min-height:100vh;position:relative;z-index:1;}
       @keyframes fu{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
       .page-header{margin-bottom:28px;opacity:0;animation:fu .5s ease .1s forwards;}
       .page-eyebrow{font-size:.62rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--blue);margin-bottom:8px;}
       .page-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:2rem;letter-spacing:-.04em;color:var(--text);margin-bottom:6px;}
       .page-sub{font-size:.88rem;color:var(--text2);line-height:1.7;}
-      .dash-grid{display:grid;grid-template-columns:1fr 360px;gap:20px;opacity:0;animation:fu .5s ease .2s forwards;}
+      /* SUMMARY CARDS */
+      .sum-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;opacity:0;animation:fu .5s ease .15s forwards;}
+      .sum-card{background:var(--glass);backdrop-filter:blur(20px) saturate(2);border:1px solid var(--gb);border-radius:18px;padding:20px 22px;box-shadow:var(--gs);}
+      .sum-ic{font-size:1.3rem;margin-bottom:10px;}
+      .sum-val{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.6rem;letter-spacing:-.03em;color:var(--text);margin-bottom:3px;}
+      .sum-lbl{font-size:.72rem;color:var(--muted);}
+      .sum-sub{font-size:.68rem;margin-top:5px;font-weight:500;color:var(--blue);}
+      /* CHARTS GRID */
+      .charts-grid{display:grid;grid-template-columns:1fr 340px;gap:20px;opacity:0;animation:fu .5s ease .2s forwards;}
       .panel{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:22px;box-shadow:var(--gs);overflow:hidden;}
-      .p-hd{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0;}
+      .p-hd{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--border);}
       .p-t{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--text);}
       .p-s{font-size:.72rem;color:var(--muted);margin-top:1px;}
-      /* TABS */
-      .tab-row{display:flex;gap:4px;padding:14px 24px 0;}
-      .tab{font-size:.78rem;font-weight:500;padding:7px 16px;border-radius:100px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:background .2s,color .2s;}
-      .tab.on{background:var(--blue-pale);color:var(--blue);font-weight:600;}
-      /* UPCOMING */
-      .upcoming-list{padding:16px 20px;}
-      .up-card{background:var(--glass2);border:1px solid var(--gb);border-radius:16px;padding:16px 18px;margin-bottom:10px;transition:box-shadow .2s;}
-      .up-card:hover{box-shadow:var(--gsl);}
-      .up-card-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-      .up-countdown{width:48px;height:48px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
-      .up-days-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;line-height:1;}
-      .up-days-lbl{font-size:.5rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:1px;}
-      .up-bill-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.92rem;color:var(--text);}
-      .up-bill-sub{font-size:.68rem;color:var(--muted);margin-top:2px;}
-      .up-bill-amt{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1rem;color:var(--text);margin-left:auto;}
-      .up-remind-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:10px;padding:8px 12px;}
-      .up-remind-txt{font-size:.72rem;color:var(--text2);}
-      .up-edit-btn{font-size:.68rem;font-weight:600;color:var(--blue);background:none;border:none;cursor:pointer;padding:2px 8px;border-radius:100px;transition:background .2s;}
-      .up-edit-btn:hover{background:var(--blue-pale);}
-      /* EDIT ROW */
-      .edit-row{background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);border-radius:12px;padding:12px 14px;margin-top:8px;}
-      .edit-row-label{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
-      .edit-selects{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-      .edit-select-wrap{display:flex;flex-direction:column;gap:4px;flex:1;}
-      .edit-select-wrap label{font-size:.6rem;color:var(--muted);font-weight:600;}
-      .edit-select-wrap select{background:white;border:1.5px solid rgba(33,119,209,.15);border-radius:9px;padding:7px 10px;font-family:'Inter',sans-serif;font-size:.8rem;color:var(--text);outline:none;cursor:pointer;}
-      .edit-select-wrap select:focus{border-color:var(--blue);}
-      .plus-lock{display:flex;align-items:center;gap:6px;font-size:.68rem;color:var(--muted);background:rgba(122,144,170,.08);border:1px dashed rgba(122,144,170,.2);border-radius:8px;padding:7px 10px;cursor:pointer;transition:all .2s;}
-      .plus-lock:hover{background:var(--blue-pale);color:var(--blue);border-color:rgba(33,119,209,.2);}
-      .edit-save-btn{background:var(--blue);color:white;border:none;padding:8px 18px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;}
-      .edit-cancel{background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 14px;border-radius:100px;font-size:.78rem;cursor:pointer;}
-      .saved-badge{font-size:.68rem;font-weight:600;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:100px;padding:3px 10px;}
-      /* HISTORY */
-      .history-list{padding:12px 20px;}
-      .hist-item{display:flex;align-items:flex-start;gap:12px;padding:12px 10px;border-radius:12px;margin-bottom:4px;transition:background .2s;}
-      .hist-item:hover{background:rgba(33,119,209,.04);}
-      .hist-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:.7rem;color:white;flex-shrink:0;}
-      .hist-msg{font-size:.78rem;color:var(--text2);line-height:1.5;}
-      .hist-time{font-size:.62rem;color:var(--muted);margin-top:3px;}
-      .hist-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text);margin-left:auto;white-space:nowrap;}
-      .empty{padding:40px 24px;text-align:center;}
-      .empty-ic{font-size:2rem;margin-bottom:10px;}
-      .empty-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.92rem;color:var(--text2);margin-bottom:6px;}
-      .empty-s{font-size:.78rem;color:var(--muted);}
-      /* RIGHT COL */
-      .rcol{display:flex;flex-direction:column;gap:16px;}
-      /* STATS */
-      .stat-cards{display:flex;flex-direction:column;gap:10px;padding:16px 20px;}
-      .stat-card{display:flex;align-items:center;gap:14px;background:var(--glass2);border:1px solid var(--gb);border-radius:14px;padding:14px 16px;}
-      .stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
-      .stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.2rem;color:var(--text);}
-      .stat-lbl{font-size:.68rem;color:var(--muted);margin-top:1px;}
-      /* ALL BILLS REMINDERS */
-      .bill-remind-list{padding:12px 20px;}
-      .br-item{display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:12px;margin-bottom:4px;transition:background .2s;}
-      .br-item:hover{background:rgba(33,119,209,.04);}
-      .br-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-      .br-name{font-size:.84rem;font-weight:600;color:var(--text);flex:1;}
-      .br-chip{font-size:.62rem;font-weight:600;padding:3px 9px;border-radius:100px;white-space:nowrap;}
-      .br-chip-soon{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2);}
-      .br-chip-ok{background:var(--blue-pale);color:var(--blue);border:1px solid rgba(33,119,209,.15);}
-      @media(max-width:1000px){.dash-grid{grid-template-columns:1fr;}}
+      .p-body{padding:20px 24px;}
+      /* LINE CHART */
+      .line-wrap{padding:20px 24px;overflow-x:auto;}
+      .line-tooltip{position:absolute;background:white;border:1px solid var(--gb);border-radius:10px;padding:8px 12px;font-size:.72rem;font-weight:600;color:var(--text);box-shadow:var(--gs);pointer-events:none;transform:translate(-50%,-110%);white-space:nowrap;}
+      /* DONUT */
+      .donut-wrap{display:flex;flex-direction:column;align-items:center;padding:20px 24px;}
+      .donut-legend{width:100%;margin-top:16px;display:flex;flex-direction:column;gap:6px;}
+      .legend-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;transition:background .2s;cursor:pointer;}
+      .legend-item:hover{background:rgba(33,119,209,.05);}
+      .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+      .legend-name{font-size:.78rem;font-weight:600;color:var(--text);flex:1;}
+      .legend-pct{font-size:.68rem;color:var(--muted);}
+      .legend-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text);}
+      .legend-edit{font-size:.62rem;color:var(--blue);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px;opacity:0;transition:opacity .2s;}
+      .legend-item:hover .legend-edit{opacity:1;}
+      /* CAT OVERRIDE */
+      .cat-select{background:white;border:1.5px solid var(--blue);border-radius:8px;padding:4px 8px;font-size:.72rem;color:var(--text);outline:none;cursor:pointer;}
+      /* BILL BREAKDOWN */
+      .bb-list{padding:12px 20px;}
+      .bb-item{display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:12px;margin-bottom:4px;transition:background .2s;}
+      .bb-item:hover{background:rgba(33,119,209,.04);}
+      .bb-rank{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:.8rem;color:var(--muted);width:20px;text-align:center;flex-shrink:0;}
+      .bb-name{font-size:.84rem;font-weight:600;color:var(--text);flex:1;}
+      .bb-bar-wrap{width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+      .bb-bar{height:100%;border-radius:3px;transition:width .8s ease;}
+      .bb-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text);text-align:right;min-width:52px;}
+      @media(max-width:1100px){.charts-grid{grid-template-columns:1fr;}.sum-row{grid-template-columns:repeat(2,1fr);}}
       @media(max-width:700px){.sb{display:none;}.main{margin-left:0;padding:16px;}}
 
         /* ── MOBILE TOP BAR ── */
@@ -419,218 +504,180 @@ export default function RemindersPage(){
       <div className="sb-logo"><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></div>
       <div className="nav-lbl">Menu</div>
       <a className="ni" href="/dashboard"><span className="ni-ic">📋</span>My Bills</a>
-      <a className="ni on" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
+      <a className="ni" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
       <div className="ni"><span className="ni-ic">🏆</span>Achievements</div>
       <a className="ni" href="/learn"><span className="ni-ic">🧠</span>Learn</a>
-      <a className="ni" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
+      <a className="ni on" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
       <div className="ni"><span className="ni-ic">⚙️</span>Settings</div>
       <div className="nav-lbl">Resources</div>
       <a className="ni" href="https://financialfutureseducation.com/" target="_blank" rel="noreferrer"><span className="ni-ic">🎓</span>FFE Website</a>
       <div className="sb-bot">
-        <div className="plan-pill">
-          <div><div className="pp-name">{userPlan} Plan</div><div className="pp-ct">Reminders</div></div>
-          <div className="pp-badge">Active</div>
-        </div>
-        <div className="u-row">
-          <div className="u-av">{userName[0]?.toUpperCase()}</div>
-          <div><div className="u-name">{userName}</div></div>
-        </div>
+        <div className="plan-pill"><div><div className="pp-name">{userPlan} Plan</div><div className="pp-ct">Full analytics</div></div><div className="pp-badge">Active</div></div>
+        <div className="u-row"><div className="u-av">{userName[0]?.toUpperCase()}</div><div><div className="u-name">{userName}</div></div></div>
       </div>
     </aside>
 
     <main className="main">
-      <MobileNav activePage="/reminders" userName={userName} userPlan={userPlan}/>
       <div className="page-header">
-        <div className="page-eyebrow">Reminder management</div>
-        <div className="page-title">🔔 Reminders</div>
-        <div className="page-sub">See what&apos;s coming up, edit your timing, and review every text Nyra has sent you.</div>
+        <div className="page-eyebrow">Spending insights</div>
+        <div className="page-title">📊 Analytics</div>
+        <div className="page-sub">A full breakdown of your bills — where your money goes, how much you&apos;re spending, and what&apos;s coming up.</div>
       </div>
 
-      <div className="dash-grid">
-        <div>
-          {/* Tab switcher */}
+      {/* Summary cards */}
+      <div className="sum-row">
+        <div className="sum-card">
+          <div className="sum-ic">💸</div>
+          <div className="sum-val">${totalMonthly.toLocaleString()}</div>
+          <div className="sum-lbl">Monthly total</div>
+          <div className="sum-sub">{bills.length} bills tracked</div>
+        </div>
+        <div className="sum-card">
+          <div className="sum-ic">📅</div>
+          <div className="sum-val">${projectedAnnual.toLocaleString()}</div>
+          <div className="sum-lbl">Projected annual</div>
+          <div className="sum-sub">Based on current bills</div>
+        </div>
+        <div className="sum-card">
+          <div className="sum-ic">📋</div>
+          <div className="sum-val">${avgPerBill.toFixed(0)}</div>
+          <div className="sum-lbl">Average per bill</div>
+          <div className="sum-sub">Across {bills.length} bills</div>
+        </div>
+      </div>
+
+      <div className="charts-grid">
+        <div style={{display:'flex',flexDirection:'column',gap:20}}>
+
+          {/* LINE CHART */}
           <div className="panel">
             <div className="p-hd">
-              <div>
-                <div className="p-t">{activeTab==='upcoming'?'Upcoming Reminders':'Reminder History'}</div>
-                <div className="p-s">{activeTab==='upcoming'?'Next 7 days':'Every text Nyra has sent you'}</div>
-              </div>
+              <div><div className="p-t">📈 Monthly Spending Trend</div><div className="p-s">Last 6 months</div></div>
             </div>
-            <div className="tab-row">
-              <button className={`tab ${activeTab==='upcoming'?'on':''}`} onClick={()=>setActiveTab('upcoming')}>📅 Upcoming</button>
-              <button className={`tab ${activeTab==='history'?'on':''}`} onClick={()=>setActiveTab('history')}>📜 History ({reminders.length})</button>
-            </div>
-
-            {activeTab==='upcoming'&&(
-              <div className="upcoming-list">
-                {upcoming.length===0?(
-                  <div className="empty"><div className="empty-ic">🎉</div><div className="empty-h">Nothing due in the next 7 days!</div><div className="empty-s">You&apos;re all clear. Nyra will text you when something&apos;s coming up.</div></div>
-                ):upcoming.map(bill=>{
-                  const d=daysUntil(bill.due_date);
-                  const isEditing=editingBill===bill.id;
-                  const color=d<=2?'var(--danger)':d<=5?'var(--warn)':'var(--blue)';
-                  const bgColor=d<=2?'rgba(239,68,68,.08)':d<=5?'rgba(245,158,11,.08)':'var(--blue-pale)';
-                  return(
-                    <div key={bill.id} className="up-card">
-                      <div className="up-card-top">
-                        <div className="up-countdown" style={{background:bgColor}}>
-                          <div className="up-days-num" style={{color}}>{d}</div>
-                          <div className="up-days-lbl" style={{color}}>days</div>
-                        </div>
-                        <div style={{flex:1}}>
-                          <div className="up-bill-name">{bill.name}</div>
-                          <div className="up-bill-sub">{bill.recurring} · Due {fmtDate(bill.due_date)}</div>
-                        </div>
-                        <div className="up-bill-amt">${bill.amount.toLocaleString()}</div>
-                      </div>
-                      <div className="up-remind-row">
-                        <div className="up-remind-txt">
-                          📱 Reminder set for <strong>{bill.remind_days_before} day{bill.remind_days_before!==1?'s':''} before</strong> ({fmtDate(new Date(new Date(bill.due_date+'T00:00:00').getTime()-bill.remind_days_before*86400000).toISOString().split('T')[0])})
-                        </div>
-                        {saved===bill.id?<span className="saved-badge">✓ Saved!</span>:<button className="up-edit-btn" onClick={()=>isEditing?setEditingBill(null):startEdit(bill)}>✏️ Edit</button>}
-                      </div>
-                      {isEditing&&(
-                        <div className="edit-row">
-                          <div className="edit-row-label">Customize reminders for {bill.name}</div>
-                          <div className="edit-selects">
-                            <div className="edit-select-wrap">
-                              <label>1st reminder</label>
-                              <select value={editRemind} onChange={e=>setEditRemind(e.target.value)}>
-                                <option value="1">1 day before</option>
-                                <option value="3">3 days before</option>
-                                <option value="5">5 days before</option>
-                                <option value="7">7 days before</option>
-                                <option value="10">10 days before</option>
-                                <option value="14">14 days before</option>
-                              </select>
-                            </div>
-                            {isPlus?(
-                              <div className="edit-select-wrap">
-                                <label>2nd reminder <span style={{color:'var(--gold)',fontSize:'.55rem'}}>PLUS</span></label>
-                                <select value={editRemind2} onChange={e=>setEditRemind2(e.target.value)}>
-                                  <option value="">No 2nd reminder</option>
-                                  <option value="1">1 day before</option>
-                                  <option value="3">3 days before</option>
-                                  <option value="5">5 days before</option>
-                                  <option value="7">7 days before</option>
-                                </select>
-                              </div>
-                            ):(
-                              <div className="plus-lock" onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>
-                                🔒 2nd reminder — Plus only
-                              </div>
-                            )}
-                            <button className="edit-save-btn" onClick={()=>saveEdit(bill)} disabled={saving}>{saving?'Saving...':'Save'}</button>
-                            <button className="edit-cancel" onClick={()=>setEditingBill(null)}>Cancel</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {/* All bills with reminder dates */}
-                {bills.filter(b=>!upcoming.find(u=>u.id===b.id)).length>0&&(
-                  <>
-                    <div style={{fontSize:'.7rem',fontWeight:700,color:'var(--muted)',letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 4px 4px',marginTop:8}}>All other bills</div>
-                    {bills.filter(b=>!upcoming.find(u=>u.id===b.id)).map(bill=>{
-                      const d=daysUntil(bill.due_date);
-                      const isEditing=editingBill===bill.id;
-                      return(
-                        <div key={bill.id} className="up-card" style={{opacity:.8}}>
-                          <div className="up-card-top">
-                            <div className="up-countdown" style={{background:'var(--blue-pale)'}}>
-                              <div className="up-days-num" style={{color:'var(--blue)',fontSize:'.85rem'}}>{d}d</div>
-                            </div>
-                            <div style={{flex:1}}>
-                              <div className="up-bill-name">{bill.name}</div>
-                              <div className="up-bill-sub">{bill.recurring} · Due {fmtDate(bill.due_date)}</div>
-                            </div>
-                            <div className="up-bill-amt">${bill.amount.toLocaleString()}</div>
-                          </div>
-                          <div className="up-remind-row">
-                            <div className="up-remind-txt">📱 Reminder: <strong>{bill.remind_days_before}d before</strong></div>
-                            {saved===bill.id?<span className="saved-badge">✓ Saved!</span>:<button className="up-edit-btn" onClick={()=>isEditing?setEditingBill(null):startEdit(bill)}>✏️ Edit</button>}
-                          </div>
-                          {isEditing&&(
-                            <div className="edit-row">
-                              <div className="edit-row-label">Customize reminders for {bill.name}</div>
-                              <div className="edit-selects">
-                                <div className="edit-select-wrap">
-                                  <label>1st reminder</label>
-                                  <select value={editRemind} onChange={e=>setEditRemind(e.target.value)}>
-                                    <option value="1">1 day before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option><option value="10">10 days before</option><option value="14">14 days before</option>
-                                  </select>
-                                </div>
-                                {isPlus?(
-                                  <div className="edit-select-wrap">
-                                    <label>2nd reminder <span style={{color:'var(--gold)',fontSize:'.55rem'}}>PLUS</span></label>
-                                    <select value={editRemind2} onChange={e=>setEditRemind2(e.target.value)}>
-                                      <option value="">No 2nd reminder</option><option value="1">1 day before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option>
-                                    </select>
-                                  </div>
-                                ):(
-                                  <div className="plus-lock" onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>🔒 2nd reminder — Plus only</div>
-                                )}
-                                <button className="edit-save-btn" onClick={()=>saveEdit(bill)} disabled={saving}>{saving?'Saving...':'Save'}</button>
-                                <button className="edit-cancel" onClick={()=>setEditingBill(null)}>Cancel</button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeTab==='history'&&(
-              <div className="history-list">
-                {reminders.length===0?(
-                  <div className="empty"><div className="empty-ic">📱</div><div className="empty-h">No reminders sent yet</div><div className="empty-s">Your reminder history will appear here once Nyra starts texting you.</div></div>
-                ):reminders.map(r=>(
-                  <div key={r.id} className="hist-item">
-                    <div className="hist-av">N</div>
-                    <div style={{flex:1}}>
-                      <div className="hist-msg">👋 Your <strong>{r.bill_name}</strong> payment is due soon.</div>
-                      <div className="hist-time">{fmtDateTime(r.sent_at)} · SMS</div>
-                    </div>
-                    <div className="hist-amt">${r.amount}</div>
-                  </div>
+            <div className="line-wrap">
+              <svg width="100%" viewBox={`0 0 ${lineW} ${lineH+20}`} style={{overflow:'visible'}}>
+                {/* Grid lines */}
+                {[0,.25,.5,.75,1].map(f=>(
+                  <line key={f} x1={linePad} y1={lineH-linePad-(f*(lineH-linePad*2))} x2={lineW-linePad} y2={lineH-linePad-(f*(lineH-linePad*2))} stroke="rgba(33,119,209,.07)" strokeWidth="1"/>
                 ))}
-              </div>
-            )}
+                {/* Area */}
+                <path d={areaD} fill="url(#lineGrad)" opacity=".4"/>
+                {/* Line */}
+                <path d={pathD} fill="none" stroke="#2177d1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Points + labels */}
+                {points.map((p,i)=>(
+                  <g key={i}>
+                    <circle cx={p.x} cy={p.y} r="4" fill="white" stroke="#2177d1" strokeWidth="2.5"/>
+                    <text x={p.x} y={lineH+14} textAnchor="middle" fontSize="10" fill="#7a90aa" fontFamily="Inter">{p.month}</text>
+                    <text x={p.x} y={p.y-10} textAnchor="middle" fontSize="9" fill="#2177d1" fontWeight="700" fontFamily="'Plus Jakarta Sans'">${p.amount.toLocaleString()}</text>
+                  </g>
+                ))}
+                <defs>
+                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2177d1" stopOpacity="0.3"/>
+                    <stop offset="100%" stopColor="#2177d1" stopOpacity="0"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div style={{fontSize:'.68rem',color:'var(--muted)',marginTop:8,textAlign:'center'}}>* Recent months estimated from current bills. Historical data will populate as you use Nyra.</div>
+            </div>
           </div>
-        </div>
 
-        {/* Right col */}
-        <div className="rcol">
-          {/* Stats */}
+          {/* BILL BREAKDOWN RANKED */}
           <div className="panel">
-            <div className="p-hd"><div><div className="p-t">Reminder Stats</div><div className="p-s">Your reminder activity</div></div></div>
-            <div className="stat-cards">
-              {[
-                {ic:'📱',bg:'var(--blue-pale)',val:reminders.length,lbl:'Total reminders sent'},
-                {ic:'⏰',bg:'rgba(195,154,53,.1)',val:bills.length>0?(bills.reduce((s,b)=>s+b.remind_days_before,0)/bills.length).toFixed(1)+'d':'—',lbl:'Avg reminder timing'},
-                {ic:'📅',bg:'rgba(34,197,94,.08)',val:upcoming.length,lbl:'Due in next 7 days'},
-                {ic:'✅',bg:'rgba(34,197,94,.08)',val:bills.filter(b=>b.remind_days_before>=5).length,lbl:'Bills with 5+ day buffer'},
-              ].map((s,i)=>(
-                <div key={i} className="stat-card">
-                  <div className="stat-icon" style={{background:s.bg}}>{s.ic}</div>
-                  <div><div className="stat-val">{s.val}</div><div className="stat-lbl">{s.lbl}</div></div>
+            <div className="p-hd"><div><div className="p-t">🏆 Biggest Bills</div><div className="p-s">Ranked by monthly amount</div></div></div>
+            <div className="bb-list">
+              {bills.length===0?(
+                <div style={{padding:'28px',textAlign:'center',fontSize:'.82rem',color:'var(--muted)'}}>No bills yet — add some to see your breakdown</div>
+              ):[...bills].sort((a,b)=>b.amount-a.amount).map((bill,i)=>(
+                <div key={bill.id} className="bb-item">
+                  <div className="bb-rank">#{i+1}</div>
+                  <div style={{width:32,height:32,borderRadius:9,background:CAT_MAP[getBillCat(bill)]?.color+'18'||'var(--blue-pale)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.9rem',flexShrink:0}}>
+                    {CAT_MAP[getBillCat(bill)]?.emoji||'📋'}
+                  </div>
+                  <div className="bb-name">{bill.name}</div>
+                  <div className="bb-bar-wrap"><div className="bb-bar" style={{width:`${(bill.amount/bills[0].amount)*100}%`,background:CAT_MAP[getBillCat(bill)]?.color||'var(--blue)'}}/></div>
+                  <div className="bb-amt">${bill.amount.toLocaleString()}</div>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Tip */}
-          <div className="panel" style={{padding:'20px 22px'}}>
-            <div style={{fontSize:'.72rem',fontWeight:700,color:'var(--gold)',letterSpacing:'.1em',textTransform:'uppercase',marginBottom:10}}>💡 Pro tip</div>
-            <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.9rem',color:'var(--text)',marginBottom:6}}>Set reminders 5–7 days early</div>
-            <div style={{fontSize:'.78rem',color:'var(--text2)',lineHeight:1.75}}>
-              A 7-day buffer gives you time to move money between accounts, avoid NSF fees, and keep your credit score clean. 1-day reminders are stressful. 7-day reminders are smooth. 🟢
+        {/* Right col — donut */}
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="panel">
+            <div className="p-hd"><div><div className="p-t">🍩 Spending by Category</div><div className="p-s">Click a category to override</div></div></div>
+            <div className="donut-wrap">
+              {bills.length===0?(
+                <div style={{padding:'28px',textAlign:'center',fontSize:'.82rem',color:'var(--muted)'}}>Add bills to see your breakdown</div>
+              ):(
+                <>
+                  {/* Donut SVG */}
+                  <svg width="160" height="160" viewBox="0 0 160 160">
+                    <circle cx="80" cy="80" r={donutR} fill="none" stroke="var(--border)" strokeWidth="18"/>
+                    {donutSlices.map((s,i)=>(
+                      <circle key={i} cx="80" cy="80" r={donutR} fill="none" stroke={s.color}
+                        strokeWidth="18" strokeDasharray={`${s.dash} ${donutC-s.dash}`}
+                        strokeDashoffset={-s.offset} transform="rotate(-90 80 80)"
+                        style={{transition:'stroke-dasharray .8s ease'}}/>
+                    ))}
+                    <text x="80" y="76" textAnchor="middle" fontSize="13" fontWeight="800" fill="#0c1524" fontFamily="'Plus Jakarta Sans'">${totalMonthly.toLocaleString()}</text>
+                    <text x="80" y="90" textAnchor="middle" fontSize="9" fill="#7a90aa" fontFamily="Inter">per month</text>
+                  </svg>
+                  {/* Legend */}
+                  <div className="donut-legend">
+                    {donutSlices.map(s=>{
+                      const catInfo=CAT_MAP[s.cat]||{label:s.cat,emoji:'📋',color:'#7a90aa'};
+                      const catBills=bills.filter(b=>getBillCat(b)===s.cat);
+                      return(
+                        <div key={s.cat} className="legend-item">
+                          <div className="legend-dot" style={{background:s.color}}/>
+                          <span style={{fontSize:'1rem'}}>{catInfo.emoji}</span>
+                          <div style={{flex:1}}>
+                            <div className="legend-name">{catInfo.label}</div>
+                            <div className="legend-pct">{catBills.length} bill{catBills.length!==1?'s':''} · {(s.pct*100).toFixed(0)}%</div>
+                          </div>
+                          <div className="legend-amt">${s.amt.toLocaleString()}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Per-bill category override */}
+                  {bills.length>0&&(
+                    <div style={{width:'100%',marginTop:16,borderTop:'1px solid var(--border)',paddingTop:14}}>
+                      <div style={{fontSize:'.62rem',fontWeight:700,color:'var(--muted)',letterSpacing:'.1em',textTransform:'uppercase',marginBottom:10}}>Override categories</div>
+                      {bills.map(bill=>(
+                        <div key={bill.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                          <span style={{fontSize:'.78rem',color:'var(--text2)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bill.name}</span>
+                          <select className="cat-select" value={getBillCat(bill)} onChange={e=>overrideCat(bill.id,e.target.value)}>
+                            {Object.entries(CAT_MAP).map(([key,{label,emoji}])=>(
+                              <option key={key} value={key}>{emoji} {label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            {!isPlus&&<button style={{marginTop:14,background:'var(--blue)',color:'white',border:'none',padding:'8px 18px',borderRadius:100,fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:'.76rem',fontWeight:700,cursor:'pointer',boxShadow:'0 3px 10px var(--blue-glow)'}} onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>Unlock 2nd reminders on Plus →</button>}
+          </div>
+
+          {/* Projected annual card */}
+          <div style={{background:'linear-gradient(135deg,var(--blue),var(--blue-d))',borderRadius:20,padding:'24px',boxShadow:'0 8px 28px var(--blue-glow)',position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px)',backgroundSize:'24px 24px'}}/>
+            <div style={{position:'relative',zIndex:1}}>
+              <div style={{fontSize:'.65rem',fontWeight:600,letterSpacing:'.14em',textTransform:'uppercase',color:'rgba(255,255,255,.6)',marginBottom:10}}>Projected annual spend</div>
+              <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:800,fontSize:'2.2rem',letterSpacing:'-.04em',color:'white',marginBottom:6}}>${projectedAnnual.toLocaleString()}</div>
+              <div style={{fontSize:'.78rem',color:'rgba(255,255,255,.75)',lineHeight:1.6,marginBottom:16}}>
+                Based on {bills.length} bill{bills.length!==1?'s':''} totalling ${totalMonthly.toLocaleString()}/month. That&apos;s ${(projectedAnnual/52).toFixed(0)}/week on bills.
+              </div>
+              <div style={{background:'rgba(255,255,255,.12)',borderRadius:12,padding:'10px 14px',fontSize:'.75rem',color:'rgba(255,255,255,.85)'}}>
+                💡 Setting 7-day reminders on all bills could save you an estimated <strong>${(bills.length*35).toLocaleString()}/year</strong> in late fees
+              </div>
+            </div>
           </div>
         </div>
       </div>
