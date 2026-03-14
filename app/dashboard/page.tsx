@@ -882,29 +882,15 @@ function DashboardInner(){
     </main>
 
     {/* ADD BILL MODAL */}
-    {modalOpen&&(
-      <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)setModalOpen(false);}}>
-        <div className="modal">
-          <button className="m-cl" onClick={()=>setModalOpen(false)}>✕</button>
-          <div className="m-ti">Add a Bill</div>
-          <div className="m-su">Nyra will remind you before it&apos;s due.</div>
-          <div className="mfg">
-            <label>Bill name</label>
-            <input type="text" placeholder="e.g. Netflix, Rent, Rogers" value={billName} onChange={e=>handleName(e.target.value)}/>
-            {aiSugg&&<div className="ai-s">{aiSugg==='thinking'?<><div className="ai-dot"/><span>AI is thinking...</span></>:<span>{aiSugg}</span>}</div>}
-          </div>
-          <div className="fr2">
-            <div className="mfg"><label>Amount ($)</label><input type="number" placeholder="0.00" value={billAmt} onChange={e=>setBillAmt(e.target.value)}/></div>
-            <div className="mfg"><label>Due date</label><input type="date" value={billDue} onChange={e=>setBillDue(e.target.value)}/></div>
-          </div>
-          <div className="fr2">
-            <div className="mfg"><label>Billing cycle</label><select value={billCycle} onChange={e=>setBillCycle(e.target.value)}><option>Monthly</option><option>Yearly</option><option>Weekly</option><option>One-time</option></select></div>
-            <div className="mfg"><label>Remind me</label><select value={billRemind} onChange={e=>setBillRemind(e.target.value)}><option value="1">1 day before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option></select></div>
-          </div>
-          <button className="m-sub" onClick={saveBill} disabled={saving||!billName||!billAmt||!billDue}>{saving?'Saving...':'Save Bill →'}</button>
-        </div>
-      </div>
-    )}
+    {modalOpen&&<AddBillModal
+      userPlan={userPlan}
+      bills={bills}
+      stats={stats}
+      paydayAmt={paydayAmt}
+      paydayDate={paydayDate}
+      onClose={()=>setModalOpen(false)}
+      onSaved={(newBill)=>{setBills(prev=>[...prev,newBill]);setModalOpen(false);}}
+    />}
 
     {/* BADGE EARNED POPUP — all tiers */}
     {badgePopup&&earnedBadge&&(
@@ -1151,6 +1137,365 @@ ${depth}`;
         ✦
         {proactive&&!open&&<div className="ai-notif">!</div>}
       </button>
+    </div>
+  );
+}
+
+// ─── Bank grace periods ───────────────────────────────────────────────────────
+const BANK_GRACE: Record<string,number> = {
+  'RBC':14,'TD':21,'Scotiabank':25,'CIBC':21,'BMO':21,
+  'Amex':21,'Capital One':25,'Tangerine':21,'Other':21
+};
+const BANKS = Object.keys(BANK_GRACE);
+
+function calcCCDueDate(closingDay:number, bank:string):string {
+  const grace = BANK_GRACE[bank]||21;
+  const now = new Date();
+  // Find next closing date
+  let closing = new Date(now.getFullYear(), now.getMonth(), closingDay);
+  if(closing <= now) closing = new Date(now.getFullYear(), now.getMonth()+1, closingDay);
+  const due = new Date(closing.getTime() + grace*24*60*60*1000);
+  return due.toISOString().split('T')[0];
+}
+
+// ─── AddBillModal Component ───────────────────────────────────────────────────
+interface AddBillModalProps {
+  userPlan:string; bills:any[]; stats:any; paydayAmt:string; paydayDate:string;
+  onClose:()=>void; onSaved:(bill:any)=>void;
+}
+
+function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved}:AddBillModalProps){
+  const[billType,setBillType]=useState<'regular'|'credit'>('regular');
+  // Regular bill state
+  const[billName,setBillName]=useState('');
+  const[billAmt,setBillAmt]=useState('');
+  const[billDue,setBillDue]=useState('');
+  const[billCycle,setBillCycle]=useState('Monthly');
+  const[billRemind,setBillRemind]=useState('3');
+  const[aiSugg,setAiSugg]=useState('');
+  const aiTimer=useRef<NodeJS.Timeout|null>(null);
+  // Credit card state
+  const[ccNick,setCcNick]=useState('');
+  const[ccBank,setCcBank]=useState('RBC');
+  const[ccMode,setCcMode]=useState<'closing'|'duedate'>('closing');
+  const[ccClosingDay,setCcClosingDay]=useState('');
+  const[ccDue,setCcDue]=useState('');
+  const[ccAmt,setCcAmt]=useState('');
+  const[ccRemind,setCcRemind]=useState('5');
+  const[ccRemindSugg,setCcRemindSugg]=useState('');
+  const[ccRemindSuggLoading,setCcRemindSuggLoading]=useState(false);
+  const[ccRemindAccepted,setCcRemindAccepted]=useState(false);
+  // Upload state
+  const[uploadFile,setUploadFile]=useState<File|null>(null);
+  const[uploadLoading,setUploadLoading]=useState(false);
+  const[uploadResult,setUploadResult]=useState<any>(null);
+  const[uploadError,setUploadError]=useState('');
+  const[showExtracted,setShowExtracted]=useState(false);
+  const[dragOver,setDragOver]=useState(false);
+  // Saving
+  const[saving,setSaving]=useState(false);
+  const isPlus=userPlan==='Plus'||userPlan==='Power';
+
+  // AI name suggestion for regular bills
+  function handleName(val:string){
+    setBillName(val);
+    if(aiTimer.current) clearTimeout(aiTimer.current);
+    if(val.length<3){setAiSugg('');return;}
+    setAiSugg('thinking');
+    aiTimer.current=setTimeout(async()=>{
+      try{
+        const res=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',max_tokens:60,
+            system:'You are a bill assistant. Given a bill name, suggest a typical monthly amount in Canada in one short line. Format: "Typical amount: $X–$Y/month". Under 15 words.',
+            messages:[{role:'user',content:`Bill: ${val}`}]
+          })
+        });
+        const data=await res.json();
+        setAiSugg(data.content?.[0]?.text||'');
+      }catch{setAiSugg('');}
+    },800);
+  }
+
+  // Calculate CC due date when closing day or bank changes
+  function calcDue(day:string, bank:string){
+    if(!day) return;
+    const d=parseInt(day);
+    if(isNaN(d)||d<1||d>31) return;
+    const due=calcCCDueDate(d,bank);
+    setCcDue(due);
+    // Trigger AI reminder suggestion
+    getRemindSugg(due, bank);
+  }
+
+  // AI reminder suggestion for credit cards
+  async function getRemindSugg(dueDate:string, bank:string){
+    if(!isPlus) return;
+    setCcRemindSuggLoading(true);setCcRemindSugg('');setCcRemindAccepted(false);
+    const totalBills=bills.reduce((s:number,b:any)=>s+b.amount,0);
+    const streak=stats.streakMonths;
+    const avgRemind=bills.length>0?bills.reduce((s:number,b:any)=>s+b.remind_days_before,0)/bills.length:3;
+    const cashflow=paydayAmt?`Payday: $${paydayAmt} on ${paydayDate}`:'No payday set';
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:80,
+          system:'You are Nyra, a Gen Z financial coach. Give ONE specific reminder timing recommendation for a credit card bill. Format exactly: "DAYS|reason" where DAYS is a number (1-14) and reason is under 20 words. Example: "7|Your payday lands 5 days before, giving you time to transfer funds safely."',
+          messages:[{role:'user',content:`Credit card due: ${dueDate}. Bank: ${bank}. User profile: ${bills.length} bills tracked, $${totalBills}/mo total, ${streak}mo streak, avg reminder ${avgRemind.toFixed(1)} days, ${cashflow}. Suggest best reminder timing.`}]
+        })
+      });
+      const data=await res.json();
+      const txt=data.content?.[0]?.text||'';
+      if(txt.includes('|')){
+        const[days,reason]=txt.split('|');
+        setCcRemind(days.trim());
+        setCcRemindSugg(reason.trim());
+      }
+    }catch{setCcRemindSugg('');}
+    setCcRemindSuggLoading(false);
+  }
+
+  // Statement upload handler
+  async function handleUpload(file:File){
+    setUploadFile(file);setUploadLoading(true);setUploadError('');setUploadResult(null);setShowExtracted(false);
+    try{
+      const base64=await new Promise<string>((res,rej)=>{
+        const r=new FileReader();
+        r.onload=()=>res((r.result as string).split(',')[1]);
+        r.onerror=()=>rej(new Error('Read failed'));
+        r.readAsDataURL(file);
+      });
+      const isPdf=file.type==='application/pdf';
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:200,
+          system:'Extract credit card statement details and respond ONLY with valid JSON, no markdown. Format: {"nickname":"card name e.g. RBC Visa","bank":"bank name","closing_date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","minimum_payment":number_or_null}',
+          messages:[{role:'user',content:[
+            isPdf
+              ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
+              :{type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+            {type:'text',text:'Extract the credit card billing details from this statement.'}
+          ]}]
+        })
+      });
+      const data=await res.json();
+      const txt=data.content?.[0]?.text||'{}';
+      const clean=txt.replace(/```json|```/g,'').trim();
+      const extracted=JSON.parse(clean);
+      setUploadResult(extracted);setShowExtracted(true);
+      // Auto-fill fields
+      if(extracted.nickname) setCcNick(extracted.nickname);
+      if(extracted.bank&&BANKS.includes(extracted.bank)) setCcBank(extracted.bank);
+      if(extracted.due_date) setCcDue(extracted.due_date);
+      if(extracted.minimum_payment) setCcAmt(String(extracted.minimum_payment));
+      if(extracted.due_date) getRemindSugg(extracted.due_date, extracted.bank||ccBank);
+    }catch(e){
+      setUploadError('Could not read statement. Try uploading a clearer image or enter details manually.');
+    }
+    setUploadLoading(false);
+  }
+
+  function handleDrop(e:React.DragEvent){
+    e.preventDefault();setDragOver(false);
+    const file=e.dataTransfer.files[0];
+    if(file) handleUpload(file);
+  }
+
+  async function saveBill(){
+    setSaving(true);
+    try{
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!user){setSaving(false);return;}
+      if(billType==='regular'){
+        const{data,error}=await supabase.from('bills').insert({
+          user_id:user.id,name:billName,amount:parseFloat(billAmt),
+          due_date:billDue,recurring:billCycle,remind_days_before:parseInt(billRemind)
+        }).select().single();
+        if(!error&&data) onSaved(data);
+      } else {
+        const finalDue=ccMode==='closing'?ccDue:ccDue;
+        const{data,error}=await supabase.from('bills').insert({
+          user_id:user.id,name:ccNick||`${ccBank} Credit Card`,
+          amount:parseFloat(ccAmt)||0,due_date:finalDue,
+          recurring:'Monthly',remind_days_before:parseInt(ccRemind),
+          bill_type:'credit_card',cc_bank:ccBank
+        }).select().single();
+        if(!error&&data) onSaved(data);
+      }
+    }catch(e){console.error(e);}
+    setSaving(false);
+  }
+
+  const canSave=billType==='regular'
+    ?(!!billName&&!!billAmt&&!!billDue)
+    :(!!ccNick&&!!ccDue&&!!ccAmt);
+
+  return(
+    <div className="overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal" style={{maxWidth:520}}>
+        <button className="m-cl" onClick={onClose}>✕</button>
+
+        {/* TYPE TOGGLE */}
+        <div style={{display:'flex',gap:8,marginBottom:22}}>
+          <button onClick={()=>setBillType('regular')} style={{flex:1,padding:'10px',borderRadius:12,border:`2px solid ${billType==='regular'?'var(--blue)':'var(--border)'}`,background:billType==='regular'?'var(--blue-pale)':'transparent',color:billType==='regular'?'var(--blue)':'var(--muted)',fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.84rem',cursor:'pointer',transition:'all .2s'}}>
+            📋 Regular Bill
+          </button>
+          <button onClick={()=>setBillType('credit')} style={{flex:1,padding:'10px',borderRadius:12,border:`2px solid ${billType==='credit'?'var(--blue)':'var(--border)'}`,background:billType==='credit'?'var(--blue-pale)':'transparent',color:billType==='credit'?'var(--blue)':'var(--muted)',fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.84rem',cursor:'pointer',transition:'all .2s'}}>
+            💳 Credit Card
+          </button>
+        </div>
+
+        {billType==='regular'&&(<>
+          <div className="m-ti">Add a Bill</div>
+          <div className="m-su">Nyra will remind you before it&apos;s due.</div>
+          <div className="mfg">
+            <label>Bill name</label>
+            <input type="text" placeholder="e.g. Netflix, Rent, Rogers" value={billName} onChange={e=>handleName(e.target.value)}/>
+            {aiSugg&&<div className="ai-s">{aiSugg==='thinking'?<><div className="ai-dot"/><span>Thinking...</span></>:<span>{aiSugg}</span>}</div>}
+          </div>
+          <div className="fr2">
+            <div className="mfg"><label>Amount ($)</label><input type="number" placeholder="0.00" value={billAmt} onChange={e=>setBillAmt(e.target.value)}/></div>
+            <div className="mfg"><label>Due date</label><input type="date" value={billDue} onChange={e=>setBillDue(e.target.value)}/></div>
+          </div>
+          <div className="fr2">
+            <div className="mfg"><label>Billing cycle</label><select value={billCycle} onChange={e=>setBillCycle(e.target.value)}><option>Monthly</option><option>Yearly</option><option>Weekly</option><option>One-time</option></select></div>
+            <div className="mfg"><label>Remind me</label><select value={billRemind} onChange={e=>setBillRemind(e.target.value)}><option value="1">1 day before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option><option value="10">10 days before</option><option value="14">14 days before</option></select></div>
+          </div>
+        </>)}
+
+        {billType==='credit'&&(<>
+          <div className="m-ti">Add a Credit Card</div>
+          <div className="m-su">Nyra calculates your due date and suggests the best reminder time.</div>
+
+          {/* UPLOAD — Plus/Power only */}
+          {isPlus&&!showExtracted&&(
+            <div
+              onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+              onDragLeave={()=>setDragOver(false)}
+              onDrop={handleDrop}
+              style={{border:`2px dashed ${dragOver?'var(--blue)':'rgba(33,119,209,.2)'}`,borderRadius:14,padding:'20px',textAlign:'center',marginBottom:16,background:dragOver?'var(--blue-pale)':'rgba(33,119,209,.02)',transition:'all .2s',cursor:'pointer'}}
+              onClick={()=>document.getElementById('cc-upload')?.click()}
+            >
+              {uploadLoading?(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,fontSize:'.82rem',color:'var(--muted)'}}>
+                  <div style={{width:18,height:18,border:'2.5px solid var(--border)',borderTopColor:'var(--blue)',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+                  Reading your statement...
+                </div>
+              ):(
+                <>
+                  <div style={{fontSize:'1.6rem',marginBottom:8}}>📄</div>
+                  <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.86rem',color:'var(--text)',marginBottom:4}}>Upload your statement</div>
+                  <div style={{fontSize:'.72rem',color:'var(--muted)',marginBottom:8}}>PDF or photo · Drag & drop or click to browse</div>
+                  <div style={{fontSize:'.65rem',color:'var(--blue)',background:'var(--blue-pale)',border:'1px solid rgba(33,119,209,.15)',borderRadius:100,padding:'3px 12px',display:'inline-block'}}>🔒 Your statement is never stored — we only read the dates</div>
+                </>
+              )}
+              {uploadError&&<div style={{marginTop:10,fontSize:'.74rem',color:'var(--danger)'}}>{uploadError}</div>}
+              <input id="cc-upload" type="file" accept=".pdf,image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)handleUpload(f);}}/>
+            </div>
+          )}
+
+          {/* Extracted review */}
+          {showExtracted&&uploadResult&&(
+            <div style={{background:'rgba(34,197,94,.06)',border:'1px solid rgba(34,197,94,.2)',borderRadius:14,padding:'14px 16px',marginBottom:16}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                <span style={{color:'var(--success)',fontSize:'1rem'}}>✅</span>
+                <span style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.86rem',color:'var(--text)'}}>Statement read successfully</span>
+                <button onClick={()=>{setShowExtracted(false);setUploadResult(null);setUploadFile(null);}} style={{marginLeft:'auto',background:'none',border:'none',fontSize:'.7rem',color:'var(--muted)',cursor:'pointer'}}>Upload different</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,fontSize:'.76rem',color:'var(--text2)'}}>
+                {uploadResult.nickname&&<div><span style={{color:'var(--muted)'}}>Card: </span><strong>{uploadResult.nickname}</strong></div>}
+                {uploadResult.bank&&<div><span style={{color:'var(--muted)'}}>Bank: </span><strong>{uploadResult.bank}</strong></div>}
+                {uploadResult.closing_date&&<div><span style={{color:'var(--muted)'}}>Closes: </span><strong>{uploadResult.closing_date}</strong></div>}
+                {uploadResult.due_date&&<div><span style={{color:'var(--muted)'}}>Due: </span><strong>{uploadResult.due_date}</strong></div>}
+                {uploadResult.minimum_payment&&<div><span style={{color:'var(--muted)'}}>Min payment: </span><strong>${uploadResult.minimum_payment}</strong></div>}
+              </div>
+              <div style={{marginTop:8,fontSize:'.65rem',color:'var(--muted)'}}>Edit any field below if needed.</div>
+            </div>
+          )}
+
+          {/* Manual fields */}
+          <div className="fr2">
+            <div className="mfg"><label>Card nickname</label><input type="text" placeholder="e.g. RBC Visa" value={ccNick} onChange={e=>setCcNick(e.target.value)}/></div>
+            <div className="mfg"><label>Bank</label>
+              <select value={ccBank} onChange={e=>{setCcBank(e.target.value);if(ccClosingDay)calcDue(ccClosingDay,e.target.value);}}>
+                {BANKS.map(b=><option key={b}>{b}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Due date mode */}
+          <div style={{display:'flex',gap:8,marginBottom:14}}>
+            <button onClick={()=>setCcMode('closing')} style={{flex:1,padding:'8px',borderRadius:10,border:`1.5px solid ${ccMode==='closing'?'var(--blue)':'var(--border)'}`,background:ccMode==='closing'?'var(--blue-pale)':'transparent',color:ccMode==='closing'?'var(--blue)':'var(--muted)',fontSize:'.76rem',fontWeight:600,cursor:'pointer'}}>
+              I know my closing date
+            </button>
+            <button onClick={()=>setCcMode('duedate')} style={{flex:1,padding:'8px',borderRadius:10,border:`1.5px solid ${ccMode==='duedate'?'var(--blue)':'var(--border)'}`,background:ccMode==='duedate'?'var(--blue-pale)':'transparent',color:ccMode==='duedate'?'var(--blue)':'var(--muted)',fontSize:'.76rem',fontWeight:600,cursor:'pointer'}}>
+              I just know my due date
+            </button>
+          </div>
+
+          {ccMode==='closing'&&(
+            <div className="mfg">
+              <label>Statement closing day (day of month)</label>
+              <input type="number" min="1" max="31" placeholder="e.g. 3" value={ccClosingDay}
+                onChange={e=>{setCcClosingDay(e.target.value);calcDue(e.target.value,ccBank);}}/>
+              {ccDue&&<div className="ai-s" style={{color:'var(--success)'}}>✅ Your payment is due around <strong>{new Date(ccDue+'T00:00:00').toLocaleDateString('en-CA',{month:'long',day:'numeric'})}</strong> based on {ccBank}&apos;s {BANK_GRACE[ccBank]}-day grace period</div>}
+            </div>
+          )}
+
+          {ccMode==='duedate'&&(
+            <div className="mfg">
+              <label>Payment due date</label>
+              <input type="date" value={ccDue} onChange={e=>{setCcDue(e.target.value);getRemindSugg(e.target.value,ccBank);}}/>
+            </div>
+          )}
+
+          <div className="fr2">
+            <div className="mfg"><label>Amount to pay ($)</label><input type="number" placeholder="Min or full balance" value={ccAmt} onChange={e=>setCcAmt(e.target.value)}/></div>
+            <div className="mfg">
+              <label>Remind me</label>
+              <select value={ccRemind} onChange={e=>{setCcRemind(e.target.value);setCcRemindAccepted(true);}}>
+                <option value="1">1 day before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option><option value="10">10 days before</option><option value="14">14 days before</option>
+              </select>
+            </div>
+          </div>
+
+          {/* AI reminder suggestion */}
+          {isPlus&&ccRemindSuggLoading&&(
+            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--blue-pale)',borderRadius:12,marginBottom:12,fontSize:'.76rem',color:'var(--muted)'}}>
+              <div style={{width:14,height:14,border:'2px solid var(--border)',borderTopColor:'var(--blue)',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+              Nyra is analyzing your profile for the best reminder timing...
+            </div>
+          )}
+          {isPlus&&ccRemindSugg&&!ccRemindSuggLoading&&!ccRemindAccepted&&(
+            <div style={{background:'var(--blue-pale)',border:'1px solid rgba(33,119,209,.15)',borderRadius:12,padding:'12px 14px',marginBottom:12}}>
+              <div style={{display:'flex',alignItems:'flex-start',gap:8}}>
+                <span style={{color:'var(--blue)',fontSize:'1rem',flexShrink:0}}>✦</span>
+                <div style={{flex:1}}>
+                  <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.82rem',color:'var(--text)',marginBottom:3}}>Nyra suggests: {ccRemind} days before</div>
+                  <div style={{fontSize:'.74rem',color:'var(--text2)',lineHeight:1.6}}>{ccRemindSugg}</div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,marginTop:10}}>
+                <button onClick={()=>setCcRemindAccepted(true)} style={{background:'var(--blue)',color:'white',border:'none',padding:'7px 16px',borderRadius:100,fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:'.76rem',fontWeight:700,cursor:'pointer'}}>✓ Accept</button>
+                <button onClick={()=>setCcRemindAccepted(true)} style={{background:'transparent',border:'1px solid var(--border)',color:'var(--muted)',padding:'7px 14px',borderRadius:100,fontSize:'.76rem',cursor:'pointer'}}>Customize</button>
+              </div>
+            </div>
+          )}
+
+          {!isPlus&&(
+            <div style={{background:'rgba(195,154,53,.06)',border:'1px solid rgba(195,154,53,.18)',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:'.74rem',color:'var(--text2)',display:'flex',alignItems:'center',gap:8}}>
+              💡 Upgrade to Plus to upload your statement and get AI-powered reminder suggestions based on your full financial profile.
+            </div>
+          )}
+        </>)}
+
+        <button className="m-sub" onClick={saveBill} disabled={saving||!canSave}>
+          {saving?'Saving...':billType==='regular'?'Save Bill →':'Save Credit Card →'}
+        </button>
+      </div>
     </div>
   );
 }
