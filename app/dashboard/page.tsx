@@ -129,6 +129,15 @@ function DashboardInner(){
   const[wimtBill,setWimtBill]=useState<Bill|null>(null);
   const[wimtResult,setWimtResult]=useState('');
   const[wimtLoading,setWimtLoading]=useState(false);
+  // Payday
+  const[paydayOpen,setPaydayOpen]=useState(false);
+  const[paydaySetup,setPaydaySetup]=useState(false);
+  const[paydayDate,setPaydayDate]=useState('');
+  const[paydayFreq,setPaydayFreq]=useState('Biweekly');
+  const[paydayAmt,setPaydayAmt]=useState('');
+  const[paydayInsight,setPaydayInsight]=useState('');
+  const[paydayInsightLoading,setPaydayInsightLoading]=useState(false);
+  const[paydaySaved,setPaydaySaved]=useState(false);
   const rGreeting=useRef<HTMLDivElement>(null);
   const rStats=useRef<HTMLDivElement>(null);
   const rBadges=useRef<HTMLDivElement>(null);
@@ -267,6 +276,56 @@ function DashboardInner(){
     if(n>=61)return{label:'Pretty solid 💪',color:'var(--blue)'};
     if(n>=41)return{label:'Getting there 📈',color:'var(--warn)'};
     return{label:'Needs work 😬',color:'var(--danger)'};
+  }
+
+  // ── Payday ───────────────────────────────────────────────────────────────────
+  useEffect(()=>{
+    const saved=localStorage.getItem('nyra_payday');
+    if(saved){const p=JSON.parse(saved);setPaydayDate(p.date||'');setPaydayFreq(p.freq||'Biweekly');setPaydayAmt(p.amt||'');setPaydaySaved(true);}
+  },[]);
+
+  function savePayday(){
+    localStorage.setItem('nyra_payday',JSON.stringify({date:paydayDate,freq:paydayFreq,amt:paydayAmt}));
+    setPaydaySaved(true);setPaydayOpen(false);
+    genPaydayInsight();
+  }
+
+  async function genPaydayInsight(){
+    if(!paydayAmt||!paydayDate) return;
+    setPaydayInsightLoading(true);
+    const amt=parseFloat(paydayAmt);
+    const billsUntilPayday=bills.filter(b=>{const d=daysUntil(b.due_date);return d>=0&&d<=14;});
+    const totalBills=billsUntilPayday.reduce((s,b)=>s+b.amount,0);
+    const remaining=amt-totalBills;
+    const billList=billsUntilPayday.map(b=>`${b.name} $${b.amount} due in ${daysUntil(b.due_date)}d`).join(', ')||'no bills due';
+    try{
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',max_tokens:120,
+          system:'You are Nyra, a Gen Z financial coach. Give ONE short, punchy cashflow insight in under 25 words. Use 🚩 for risk, 🟢 for good. No fluff.',
+          messages:[{role:'user',content:`Payday: $${amt}. Bills before next payday: ${billList}. Remaining after bills: $${remaining}. Give one insight.`}]
+        })
+      });
+      const data=await res.json();
+      setPaydayInsight(data.content?.map((c:any)=>c.text||'').join('')||'');
+    }catch(e){setPaydayInsight('');}
+    setPaydayInsightLoading(false);
+  }
+
+  function getPaydayTimeline(){
+    if(!paydayDate||!paydayAmt) return [];
+    const amt=parseFloat(paydayAmt);
+    const today=new Date();
+    const pd=new Date(paydayDate+'T00:00:00');
+    const events:Array<{date:Date;label:string;amt:number;type:'pay'|'bill'|'bal'}>=[];
+    events.push({date:pd,label:'Payday 💰',amt,type:'pay'});
+    bills.filter(b=>daysUntil(b.due_date)>=0&&daysUntil(b.due_date)<=30)
+      .forEach(b=>events.push({date:new Date(b.due_date+'T00:00:00'),label:b.name,amt:-b.amount,type:'bill'}));
+    events.sort((a,b)=>a.date.getTime()-b.date.getTime());
+    let running=amt;
+    const timeline=events.map(e=>{running+=e.type==='bill'?e.amt:0;return{...e,running};});
+    return timeline.slice(0,6);
   }
 
   // ── What If I Miss This ───────────────────────────────────────────────────
@@ -424,6 +483,68 @@ function DashboardInner(){
       .wimt-learn-btn{flex:1;background:var(--blue);color:white;border:none;padding:12px;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;}
       .wimt-close-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:12px 20px;border-radius:12px;font-size:.84rem;cursor:pointer;transition:all .2s;}
       .wimt-close-btn:hover{background:var(--blue-pale);color:var(--blue);}
+      /* PAYDAY CARD */
+      .payday-card{background:linear-gradient(135deg,rgba(34,197,94,.05),rgba(33,119,209,.04));border:1px solid rgba(34,197,94,.18);border-radius:22px;padding:20px 24px;margin-bottom:20px;opacity:0;animation:fu .5s ease .22s forwards;}
+      .payday-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+      .payday-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--text);display:flex;align-items:center;gap:8px;}
+      .payday-setup-btn{font-size:.72rem;font-weight:600;color:var(--success);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:100px;padding:5px 14px;cursor:pointer;transition:all .2s;}
+      .payday-setup-btn:hover{background:rgba(34,197,94,.18);}
+      .payday-dismiss{font-size:.68rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px;}
+      .payday-dismiss:hover{color:var(--danger);}
+      .payday-teaser{font-size:.82rem;color:var(--text2);line-height:1.7;}
+      .payday-form{display:flex;flex-direction:column;gap:12px;}
+      .payday-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+      .pd-input-wrap{display:flex;flex-direction:column;gap:5px;}
+      .pd-label{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+      .pd-input{background:white;border:1.5px solid rgba(34,197,94,.2);border-radius:10px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:.84rem;color:var(--text);outline:none;transition:border .2s;}
+      .pd-input:focus{border-color:var(--success);}
+      .pd-save{background:linear-gradient(135deg,var(--success),#16a34a);color:white;border:none;padding:10px 22px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(34,197,94,.25);align-self:flex-start;}
+      .payday-timeline{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+      .pt-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;}
+      .pt-row.pay{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);}
+      .pt-row.bill{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.1);}
+      .pt-row.bal{background:var(--blue-pale);border:1px solid rgba(33,119,209,.12);}
+      .pt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+      .pt-date{font-size:.68rem;color:var(--muted);width:52px;flex-shrink:0;}
+      .pt-label{font-size:.8rem;color:var(--text);flex:1;}
+      .pt-amt{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.85rem;}
+      .payday-insight{background:rgba(255,255,255,.7);border:1px solid var(--gb);border-radius:12px;padding:12px 14px;font-size:.78rem;color:var(--text2);line-height:1.7;margin-top:2px;}
+      .payday-insight-loading{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--muted);}
+      .pd-spinner{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--success);border-radius:50%;animation:spin .7s linear infinite;}
+      /* AI COACH BUBBLE */
+      .ai-bubble{position:fixed;bottom:28px;right:28px;z-index:999;display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+      .ai-bubble-btn{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-d));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.4rem;box-shadow:0 8px 28px var(--blue-glow),0 2px 8px rgba(0,0,0,.15);transition:transform .2s;position:relative;}
+      .ai-bubble-btn:hover{transform:scale(1.08);}
+      .ai-notif{position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--danger);border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:.5rem;font-weight:800;color:white;}
+      .ai-panel{background:white;border:1px solid var(--gb);border-radius:24px;width:360px;max-height:520px;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(12,21,36,.22),0 4px 16px rgba(0,0,0,.08);animation:mpop .3s cubic-bezier(.34,1.56,.64,1);}
+      .ai-panel-hd{display:flex;align-items:center;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--border);}
+      .ai-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+      .ai-hd-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.9rem;color:var(--text);}
+      .ai-hd-sub{font-size:.65rem;color:var(--success);font-weight:600;}
+      .ai-close{margin-left:auto;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);padding:4px;}
+      .ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:200px;max-height:320px;}
+      .ai-msg{max-width:85%;padding:10px 14px;border-radius:16px;font-size:.8rem;line-height:1.65;}
+      .ai-msg.nyra{background:var(--blue-pale);border:1px solid rgba(33,119,209,.12);color:var(--text2);border-radius:4px 16px 16px 16px;align-self:flex-start;}
+      .ai-msg.user{background:var(--blue);color:white;border-radius:16px 16px 4px 16px;align-self:flex-end;}
+      .ai-msg.nyra.power{background:linear-gradient(135deg,rgba(124,58,237,.06),rgba(33,119,209,.06));border-color:rgba(124,58,237,.15);}
+      .ai-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+      .ai-input{flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:100px;padding:9px 14px;font-family:'Inter',sans-serif;font-size:.8rem;color:var(--text);outline:none;transition:border .2s;}
+      .ai-input:focus{border-color:var(--blue);}
+      .ai-send{width:34px;height:34px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:.9rem;flex-shrink:0;transition:background .2s;}
+      .ai-send:hover{background:var(--blue-d);}
+      .ai-send:disabled{background:var(--border);cursor:not-allowed;}
+      .ai-limit{font-size:.62rem;color:var(--muted);text-align:center;padding:4px 16px 8px;}
+      .ai-gate{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;gap:10px;}
+      .ai-gate-em{font-size:2.5rem;}
+      .ai-gate-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--text);}
+      .ai-gate-s{font-size:.76rem;color:var(--muted);line-height:1.6;max-width:240px;}
+      .ai-gate-btn{background:var(--blue);color:white;border:none;padding:9px 20px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;margin-top:4px;}
+      .ai-thinking{display:flex;gap:4px;align-items:center;padding:10px 14px;}
+      .ai-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:bounce .9s ease infinite;}
+      .ai-dot:nth-child(2){animation-delay:.15s;}
+      .ai-dot:nth-child(3){animation-delay:.3s;}
+      @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+
       .empty{padding:40px 24px;text-align:center;}
       .empty-ic{font-size:2.2rem;margin-bottom:12px;}
       .empty-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--text2);margin-bottom:6px;}
@@ -652,6 +773,54 @@ function DashboardInner(){
         )}
       </div>
 
+      {/* PAYDAY CARD */}
+      {!localStorage.getItem('nyra_payday_dismissed')&&(
+        <div className="payday-card">
+          <div className="payday-hd">
+            <div className="payday-title">💰 Payday</div>
+            <div style={{display:'flex',gap:8}}>
+              {!paydaySaved&&<button className="payday-setup-btn" onClick={()=>setPaydayOpen(o=>!o)}>{paydayOpen?'Cancel':'Set up in 30s →'}</button>}
+              {paydaySaved&&<button className="payday-setup-btn" onClick={()=>setPaydayOpen(o=>!o)}>✏️ Edit</button>}
+              <button className="payday-dismiss" onClick={()=>{localStorage.setItem('nyra_payday_dismissed','1');window.location.reload();}}>✕</button>
+            </div>
+          </div>
+          {!paydaySaved&&!paydayOpen&&(
+            <div className="payday-teaser">See exactly how much you&apos;ll have left after bills before your next payday. Takes 30 seconds to set up. 🟢</div>
+          )}
+          {paydayOpen&&(
+            <div className="payday-form">
+              <div className="payday-inputs">
+                <div className="pd-input-wrap"><div className="pd-label">Next payday</div><input type="date" className="pd-input" value={paydayDate} onChange={e=>setPaydayDate(e.target.value)}/></div>
+                <div className="pd-input-wrap"><div className="pd-label">Frequency</div>
+                  <select className="pd-input" value={paydayFreq} onChange={e=>setPaydayFreq(e.target.value)}>
+                    <option>Weekly</option><option>Biweekly</option><option>Monthly</option><option>Irregular</option>
+                  </select>
+                </div>
+                <div className="pd-input-wrap"><div className="pd-label">Take-home pay</div><input type="number" className="pd-input" placeholder="$0.00" value={paydayAmt} onChange={e=>setPaydayAmt(e.target.value)}/></div>
+              </div>
+              <button className="pd-save" onClick={savePayday} disabled={!paydayDate||!paydayAmt}>Save & see my cashflow →</button>
+            </div>
+          )}
+          {paydaySaved&&!paydayOpen&&(()=>{
+            const timeline=getPaydayTimeline();
+            const colors:{pay:string;bill:string;bal:string}={pay:'var(--success)',bill:'var(--danger)',bal:'var(--blue)'};
+            return(<>
+              <div className="payday-timeline">
+                {timeline.map((e,i)=>(
+                  <div key={i} className={`pt-row ${e.type}`}>
+                    <div className="pt-dot" style={{background:colors[e.type]}}/>
+                    <div className="pt-date">{e.date.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}</div>
+                    <div className="pt-label">{e.label}</div>
+                    <div className="pt-amt" style={{color:e.type==='bill'?'var(--danger)':e.type==='pay'?'var(--success)':'var(--blue)'}}>{e.type==='bill'?'-':'+'}{e.type!=='bal'?'$'+Math.abs(e.amt).toLocaleString():''}{e.type==='bal'?'Balance: $'+e.running.toLocaleString():''}</div>
+                  </div>
+                ))}
+              </div>
+              {paydayInsightLoading?(<div className="payday-insight-loading"><div className="pd-spinner"/>Nyra is analyzing your cashflow...</div>):paydayInsight?(<div className="payday-insight">✦ {paydayInsight}</div>):(<button className="payday-setup-btn" style={{alignSelf:'flex-start'}} onClick={genPaydayInsight}>✦ Get AI insight</button>)}
+            </>);
+          })()}
+        </div>
+      )}
+
       {/* Main grid */}
       <div className="dg">
         {/* Bills panel */}
@@ -805,6 +974,9 @@ function DashboardInner(){
       </div>
     )}
 
+    {/* AI COACH BUBBLE */}
+    <AiCoach userPlan={userPlan} userName={userName} bills={bills} stats={stats} paydayAmt={paydayAmt} paydayDate={paydayDate}/>
+
     {/* TUTORIAL */}
     {tutOn&&(<>
       <div className="tut-mask" onClick={()=>setTutOn(false)}/>
@@ -824,4 +996,161 @@ function DashboardInner(){
       </div>
     </>)}
   </>);
+}
+
+// ─── AI Coach Component ────────────────────────────────────────────────────────
+interface AiCoachProps {userPlan:string;userName:string;bills:any[];stats:any;paydayAmt:string;paydayDate:string;}
+interface ChatMsg {role:'user'|'nyra';text:string;}
+
+const MONTHLY_LIMIT=10;
+
+function AiCoach({userPlan,userName,bills,stats,paydayAmt,paydayDate}:AiCoachProps){
+  const[open,setOpen]=useState(false);
+  const[msgs,setMsgs]=useState<ChatMsg[]>([]);
+  const[input,setInput]=useState('');
+  const[loading,setLoading]=useState(false);
+  const[msgCount,setMsgCount]=useState(0);
+  const[proactive,setProactive]=useState(false);
+  const msgsEndRef=useRef<HTMLDivElement>(null);
+  const isPlus=userPlan==='Plus'||userPlan==='Power';
+  const isPower=userPlan==='Power';
+
+  useEffect(()=>{
+    // Load message count from localStorage (resets monthly)
+    const key=`nyra_ai_count_${new Date().getMonth()}`;
+    const count=parseInt(localStorage.getItem(key)||'0');
+    setMsgCount(count);
+    // Load Power memory
+    if(isPower){
+      const mem=localStorage.getItem('nyra_ai_memory');
+      if(mem) setMsgs(JSON.parse(mem));
+    }
+    // Proactive notification — Power only, checks if bills due soon
+    if(isPower){
+      const dueSoon=bills.filter(b=>{const d=Math.ceil((new Date(b.due_date+'T00:00:00').getTime()-new Date().setHours(0,0,0,0))/86400000);return d>=0&&d<=3;});
+      if(dueSoon.length>0) setProactive(true);
+    }
+  },[]);
+
+  useEffect(()=>{
+    if(open&&msgs.length===0&&isPlus){
+      const totalDue=bills.reduce((s:number,b:any)=>s+b.amount,0);
+      const dueSoon=bills.filter((b:any)=>{const d=Math.ceil((new Date(b.due_date+'T00:00:00').getTime()-new Date().setHours(0,0,0,0))/86400000);return d>=0&&d<=7;});
+      let greeting=`Hey ${userName}! 👋 I'm Nyra, your AI financial coach. `;
+      if(dueSoon.length>0) greeting+=`You have ${dueSoon.length} bill${dueSoon.length>1?'s':''} due in the next 7 days totalling $${dueSoon.reduce((s:number,b:any)=>s+b.amount,0).toLocaleString()}. `;
+      if(paydayAmt&&paydayDate){
+        const remaining=parseFloat(paydayAmt)-totalDue;
+        greeting+=`After your upcoming bills you'll have ~$${remaining.toLocaleString()} left before payday. `;
+      }
+      greeting+=`What would you like to know? ${isPower?'I remember our past conversations and can give you deeper insights. 🧠':'Ask me anything about your bills or finances.'}`;
+      setMsgs([{role:'nyra',text:greeting}]);
+    }
+    msgsEndRef.current?.scrollIntoView({behavior:'smooth'});
+  },[open,msgs.length]);
+
+  useEffect(()=>{msgsEndRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
+
+  function buildSystemPrompt(){
+    const totalDue=bills.reduce((s:number,b:any)=>s+b.amount,0);
+    const billList=bills.map((b:any)=>`${b.name}: $${b.amount}, due in ${Math.ceil((new Date(b.due_date+'T00:00:00').getTime()-new Date().setHours(0,0,0,0))/86400000)} days`).join('; ');
+    const cashflow=paydayAmt&&paydayDate?`Next payday: ${paydayDate}, take-home: $${paydayAmt}, remaining after bills: $${parseFloat(paydayAmt)-totalDue}`:'No payday data set';
+    const depth=isPower?'You are in Power mode — give deeper, more comprehensive analysis. Reference past conversation context if available. Be proactive about spotting financial risks.':'Give concise, helpful answers under 80 words.';
+    return `You are Nyra, a Gen Z AI financial coach. You are casual, direct, and genuinely helpful — like a smart friend who knows finance. Use emojis naturally. Use 🚩 for risks and 🟢 for good habits. Never be preachy.
+
+User: ${userName} | Plan: ${userPlan}
+Bills: ${billList||'None added yet'}
+Total monthly: $${totalDue}
+Cashflow: ${cashflow}
+Streak: ${stats.streakMonths} months | Money IQ: ${Math.min(100,stats.streakMonths*5+stats.billCount*5)} | Badges: ${stats.billCount}
+
+${depth}`;
+  }
+
+  async function sendMsg(){
+    if(!input.trim()||loading) return;
+    if(!isPower&&msgCount>=MONTHLY_LIMIT) return;
+    const userMsg=input.trim();
+    setInput('');
+    const newMsgs=[...msgs,{role:'user' as const,text:userMsg}];
+    setMsgs(newMsgs);
+    setLoading(true);
+    const newCount=msgCount+1;
+    setMsgCount(newCount);
+    const key=`nyra_ai_count_${new Date().getMonth()}`;
+    localStorage.setItem(key,String(newCount));
+    try{
+      const apiMsgs=newMsgs.filter(m=>m.role==='user'||m.role==='nyra').map(m=>({role:m.role==='nyra'?'assistant':'user',content:m.text}));
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:isPower?400:150,
+          system:buildSystemPrompt(),
+          messages:apiMsgs
+        })
+      });
+      const data=await res.json();
+      const reply=data.content?.map((c:any)=>c.text||'').join('')||'Something went wrong, try again!';
+      const finalMsgs=[...newMsgs,{role:'nyra' as const,text:reply}];
+      setMsgs(finalMsgs);
+      if(isPower) localStorage.setItem('nyra_ai_memory',JSON.stringify(finalMsgs.slice(-20)));
+    }catch(e){
+      setMsgs([...newMsgs,{role:'nyra' as const,text:'Something went wrong. Try again!'}]);
+    }
+    setLoading(false);
+  }
+
+  const remainingMsgs=MONTHLY_LIMIT-msgCount;
+
+  return(
+    <div className="ai-bubble">
+      {open&&(
+        <div className="ai-panel">
+          <div className="ai-panel-hd">
+            <div className="ai-avatar">✦</div>
+            <div>
+              <div className="ai-hd-name">Nyra AI Coach</div>
+              <div className="ai-hd-sub">{isPower?'Power — unlimited + memory':'Plus — '+remainingMsgs+' messages left'}</div>
+            </div>
+            <button className="ai-close" onClick={()=>setOpen(false)}>✕</button>
+          </div>
+          {!isPlus?(
+            <div className="ai-gate">
+              <div className="ai-gate-em">✦</div>
+              <div className="ai-gate-h">AI Coach is a Plus feature</div>
+              <div className="ai-gate-s">Get a personal AI financial coach that knows your bills, cashflow, and habits. Ask anything.</div>
+              <button className="ai-gate-btn" onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>Upgrade to Plus → $5/mo</button>
+            </div>
+          ):(
+            <>
+              <div className="ai-msgs">
+                {msgs.map((m,i)=>(
+                  <div key={i} className={`ai-msg ${m.role==='nyra'?`nyra${isPower?' power':''}`:' user'}`}>{m.text}</div>
+                ))}
+                {loading&&(
+                  <div className="ai-msg nyra">
+                    <div className="ai-thinking"><div className="ai-dot"/><div className="ai-dot"/><div className="ai-dot"/></div>
+                  </div>
+                )}
+                <div ref={msgsEndRef}/>
+              </div>
+              {!isPower&&remainingMsgs<=3&&<div className="ai-limit">⚠️ {remainingMsgs} message{remainingMsgs!==1?'s':''} left this month · <span style={{color:'var(--blue)',cursor:'pointer'}} onClick={()=>window.location.href='/signup?plan=Power&price=8'}>Upgrade to Power →</span></div>}
+              {!isPower&&remainingMsgs<=0?(
+                <div className="ai-limit" style={{padding:'12px 16px'}}>You&apos;ve used all 10 messages this month. <span style={{color:'var(--blue)',cursor:'pointer'}} onClick={()=>window.location.href='/signup?plan=Power&price=8'}>Upgrade to Power for unlimited →</span></div>
+              ):(
+                <div className="ai-input-row">
+                  <input className="ai-input" placeholder="Ask Nyra anything..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendMsg()} disabled={loading}/>
+                  <button className="ai-send" onClick={sendMsg} disabled={loading||!input.trim()}>↑</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      <button className="ai-bubble-btn" onClick={()=>{setOpen(o=>!o);setProactive(false);}}>
+        ✦
+        {proactive&&!open&&<div className="ai-notif">!</div>}
+      </button>
+    </div>
+  );
 }
