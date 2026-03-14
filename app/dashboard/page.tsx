@@ -129,6 +129,9 @@ function DashboardInner(){
   const[wimtBill,setWimtBill]=useState<Bill|null>(null);
   const[wimtResult,setWimtResult]=useState('');
   const[wimtLoading,setWimtLoading]=useState(false);
+  // Mounted (for localStorage SSR safety)
+  const[mounted,setMounted]=useState(false);
+  useEffect(()=>setMounted(true),[]);
   // Payday
   const[paydayOpen,setPaydayOpen]=useState(false);
   const[paydaySetup,setPaydaySetup]=useState(false);
@@ -774,7 +777,7 @@ function DashboardInner(){
       </div>
 
       {/* PAYDAY CARD */}
-      {!localStorage.getItem('nyra_payday_dismissed')&&(
+      {mounted&&!localStorage.getItem('nyra_payday_dismissed')&&(
         <div className="payday-card">
           <div className="payday-hd">
             <div className="payday-title">💰 Payday</div>
