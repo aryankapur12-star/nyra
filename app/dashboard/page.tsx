@@ -170,11 +170,11 @@ function DashboardInner(){
     const hr=new Date().getHours();
     async function load(){
       const{data:{user}}=await supabase.auth.getUser();if(!user)return;
-      const{data:prof}=await supabase.from('profiles').select('full_name,phone_number,plan,created_at').eq('id',user.id).single();
+      const{data:prof}=await supabase.from('profiles').select('full_name,phone_number,plan,created_at,sms_enabled,reminder_time').eq('id',user.id).single();
       if(prof){
         setUserName(prof.full_name?.split(' ')[0]||urlName||'there');
         setUserEmail(user.email||'');
-        setUserPhone(prof.phone||prof.phone_number||'');
+        setUserPhone(prof.phone_number||'');
         const plan=prof.plan||'Plus';setUserPlan(plan);
         setPlanLimit(plan==='Basic'?5:plan==='Power'?999:15);
         const created=new Date(prof.created_at);
