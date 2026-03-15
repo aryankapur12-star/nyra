@@ -176,7 +176,7 @@ function DashboardInner(){
     const hr=new Date().getHours();
     async function load(){
       const{data:{user}}=await supabase.auth.getUser();if(!user)return;
-      const{data:prof}=await supabase.from('profiles').select('full_name,phone_number,plan,created_at,sms_enabled,reminder_time').eq('id',user.id).single();
+      const{data:prof}=await supabase.from('profiles').select('full_name,phone_number,plan,created_at,sms_enabled,reminder_time,confirm_payments').eq('id',user.id).single();
       if(prof){
         setUserName(prof.full_name?.split(' ')[0]||urlName||'there');
         setUserEmail(user.email||'');
