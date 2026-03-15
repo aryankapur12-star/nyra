@@ -147,6 +147,8 @@ function DashboardInner(){
     const dismissed=localStorage.getItem('nyra_onboarding_dismissed')==='1';
     setOnboardingStep(step);
     setOnboardingDismissed(dismissed);
+    // Also check if first-time user - show banner if no bills and no dismissal
+    if(!dismissed&&step===0) setOnboardingDismissed(false);
   },[]);
   // Mobile nav
   const[mobOpen,setMobOpen]=useState(false);
@@ -562,16 +564,16 @@ function DashboardInner(){
 
 
       /* PAYMENT CONFIRMATION BANNER */
-      .confirm-banner{background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(33,119,209,.03));border:1px solid rgba(245,158,11,.2);border-radius:16px;padding:16px 20px;margin-bottom:14px;}
+      .confirm-banner{background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(33,119,209,.04));border:2px solid rgba(245,158,11,.3);border-radius:16px;padding:16px 20px;margin-bottom:14px;box-shadow:0 4px 16px rgba(245,158,11,.08);}
       .confirm-banner-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
       .confirm-banner-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem;color:var(--text);display:flex;align-items:center;gap:8px;}
       .confirm-bill-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(245,158,11,.1);}
       .confirm-bill-row:last-child{border-bottom:none;}
       .confirm-bill-name{font-size:.84rem;font-weight:600;color:var(--text);flex:1;}
       .confirm-bill-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text2);margin-right:8px;}
-      .confirm-paid-btn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:100px;border:1.5px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--success);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;}
+      .confirm-paid-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;border:1.5px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--success);font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;}
       .confirm-paid-btn:hover{background:rgba(34,197,94,.18);}
-      .confirm-missed-btn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:100px;border:1.5px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);color:var(--danger);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;}
+      .confirm-missed-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;border:1.5px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);color:var(--danger);font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;}
       .confirm-missed-btn:hover{background:rgba(239,68,68,.12);}
       .confirm-dismiss{background:none;border:none;font-size:.68rem;color:var(--muted);cursor:pointer;padding:2px 6px;}
       /* DOWNGRADE NUDGE */
@@ -1257,7 +1259,7 @@ function DashboardInner(){
               <div className="confirm-banner">
                 <div className="confirm-banner-hd">
                   <div className="confirm-banner-title">
-                    🔔 Did you pay these bills?
+                    🔔 Heads up — these bills passed their due date. Did you pay them?
                   </div>
                   <button className="confirm-dismiss" onClick={()=>dismissAllConfirms(pastDue.map(b=>b.id))}>
                     Auto-assume paid ✓
@@ -1277,14 +1279,21 @@ function DashboardInner(){
           <div className="bills-list">
             {loading?(<div className="empty"><div className="empty-ic">⏳</div><div className="empty-h">Loading...</div></div>)
             :bills.length===0?(<div className="empty"><div className="empty-ic">📋</div><div className="empty-h">No bills yet</div><div className="empty-s">Click &quot;+ Add Bill&quot; to get started and earn your first badge!</div></div>)
-            :bills.map(bill=>{const d=daysUntil(bill.due_date);const{label,cls}=dueChip(d);return(
+            :[...bills].sort((a,b)=>daysUntil(a.due_date)-daysUntil(b.due_date)).map(bill=>{const d=daysUntil(bill.due_date);const{label,cls}=dueChip(d);return(
               <div key={bill.id} className="br">
                 <div className="b-ic">📄</div>
                 <div><div className="b-nm">{bill.name}</div><div className="b-rc">{bill.recurring} · {bill.remind_days_before}d reminder</div></div>
                 <div className={`chip ${cls}`}>{label}</div>
                 <div className="b-amt">${bill.amount.toLocaleString()}</div>
                 <div className="b-acts">
-                  <button className="wimt-btn" onClick={()=>openWimt(bill)} title="What if I miss this?">🚨 Miss it?</button>
+                  {d<0?(
+                    <>
+                      <button className="confirm-paid-btn" style={{fontSize:'.68rem',padding:'5px 10px'}} onClick={()=>confirmPayment(bill,true)}>✓ Paid</button>
+                      <button className="confirm-missed-btn" style={{fontSize:'.68rem',padding:'5px 10px'}} onClick={()=>confirmPayment(bill,false)}>✗ Missed</button>
+                    </>
+                  ):(
+                    <button className="wimt-btn" onClick={()=>openWimt(bill)} title="What if I miss this?">🚨 Miss it?</button>
+                  )}
                   <button className="b-act" onClick={()=>setEditingBill(bill)}>✏️</button>
                   <button className="b-act" onClick={()=>deleteBill(bill.id)}>🗑</button>
                 </div>
@@ -1874,7 +1883,7 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,editBill,onClos
         </div>
 
         {billType==='regular'&&(<>
-          <div className="m-ti">{isEditing?'Edit Bill':'Add a Bill'}</div>
+          <div className="m-ti">{isEditing?`Edit ${editBill?.name||'Bill'}`:'Add a Bill'}</div>
           <div className="m-su">{isEditing?'Update your bill details below.':"Nyra will remind you before it's due."}</div>
           <div className="mfg">
             <label>Bill name</label>
@@ -1892,7 +1901,7 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,editBill,onClos
         </>)}
 
         {billType==='credit'&&(<>
-          <div className="m-ti">{isEditing?'Edit Credit Card':'Add a Credit Card'}</div>
+          <div className="m-ti">{isEditing?`Edit ${editBill?.name||'Credit Card'}`:'Add a Credit Card'}</div>
           <div className="m-su">Nyra calculates your due date and suggests the best reminder time.</div>
 
           {/* UPLOAD — Plus/Power only */}
