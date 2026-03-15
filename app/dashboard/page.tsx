@@ -100,6 +100,7 @@ function DashboardInner(){
   const sp=useSearchParams();const urlName=sp.get('name')||'';
   const[userName,setUserName]=useState(urlName||'there');
   const[userEmail,setUserEmail]=useState('');
+  const[userPhone,setUserPhone]=useState('');
   const[userPlan,setUserPlan]=useState('Plus');
   const[planLimit,setPlanLimit]=useState(15);
   const[bills,setBills]=useState<Bill[]>([]);
@@ -173,6 +174,7 @@ function DashboardInner(){
       if(prof){
         setUserName(prof.full_name?.split(' ')[0]||urlName||'there');
         setUserEmail(user.email||'');
+        setUserPhone(prof.phone||prof.phone_number||'');
         const plan=prof.plan||'Plus';setUserPlan(plan);
         setPlanLimit(plan==='Basic'?5:plan==='Power'?999:15);
         const created=new Date(prof.created_at);
