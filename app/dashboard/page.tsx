@@ -141,8 +141,8 @@ function DashboardInner(){
   const[mounted,setMounted]=useState(false);
   useEffect(()=>{
     setMounted(true);
-    const dismissed=JSON.parse(localStorage.getItem('nyra_dismissed_confirms')||'[]');
-    setDismissedConfirm(dismissed);
+    const dismissedConfirms=JSON.parse(localStorage.getItem('nyra_dismissed_confirms')||'[]');
+    setDismissedConfirm(dismissedConfirms);
     const step=parseInt(localStorage.getItem('nyra_onboarding_step')||'0');
     const dismissed=localStorage.getItem('nyra_onboarding_dismissed')==='1';
     setOnboardingStep(step);
