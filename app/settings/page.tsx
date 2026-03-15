@@ -21,6 +21,7 @@ export default function SettingsPage(){
   const[leaderboardName,setLeaderboardName]=useState('');
   const[smsEnabled,setSmsEnabled]=useState(true);
   const[emailPref,setEmailPref]=useState<'none'|'email'|'both'>('both');
+  const[confirmPayments,setConfirmPayments]=useState(true);
   const[reminderTime,setReminderTime]=useState('09:00');
   const[saving,setSaving]=useState<string|null>(null);
   const[saved,setSaved]=useState<string|null>(null);
@@ -47,6 +48,7 @@ export default function SettingsPage(){
         setUserPlan(prof.plan||'Plus');
         setSmsEnabled(prof.sms_enabled!==false);
         setEmailPref(prof.email_pref||'both');
+        setConfirmPayments(prof.confirm_payments!==false);
         setReminderTime(prof.reminder_time||'09:00');
         setLeaderboardAnon(prof.leaderboard_anon!==false);
         setLeaderboardName(prof.leaderboard_name||'');
@@ -583,6 +585,15 @@ export default function SettingsPage(){
                       ⚠️ SMS reminders are off. You won&apos;t receive any texts about upcoming bills. Make sure to check Nyra manually.
                     </div>
                   )}
+                  <div className="field" style={{marginTop:16,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+                    <div className="field-row">
+                      <div>
+                        <label style={{marginBottom:2}}>Ask me to confirm payments <SaveIndicator field="confirm_payments"/></label>
+                        <div className="field-hint" style={{marginTop:0}}>After a bill's due date, Nyra asks if you paid it. Off = auto-assume paid.</div>
+                      </div>
+                      <Toggle on={confirmPayments} onToggle={()=>{const next=!confirmPayments;setConfirmPayments(next);autosave('confirm_payments',next);}}/>
+                    </div>
+                  </div>
                   <div className="field" style={{marginTop:20,paddingTop:20,borderTop:'1px solid var(--border)'}}>
                     <label>Email reminders <SaveIndicator field="email_pref"/></label>
                     <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:6}}>

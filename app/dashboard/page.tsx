@@ -68,10 +68,11 @@ const AI_MAP: Record<string,string> = {
 function daysUntil(d:string){const t=new Date();t.setHours(0,0,0,0);return Math.ceil((new Date(d+'T00:00:00').getTime()-t.getTime())/86400000);}
 function fmtDate(d:string){return new Date(d+'T00:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'});}
 function dueChip(days:number){
-  if(days<0)  return{label:'Overdue',     cls:'chip-urgent'};
+  if(days<0)  return{label:`Heads up — due date passed`,cls:'chip-warn'};
   if(days===0)return{label:'Due today',   cls:'chip-urgent'};
-  if(days<=5) return{label:`Due in ${days}d`,cls:'chip-soon'};
-  return           {label:`Due in ${days}d`,cls:'chip-ok'};
+  if(days===1)return{label:'Due tomorrow',cls:'chip-soon'};
+  if(days<=5) return{label:`Due in ${days} days`,cls:'chip-soon'};
+  return           {label:`Due in ${days} days`,cls:'chip-ok'};
 }
 
 const TUT=[
@@ -109,6 +110,9 @@ function DashboardInner(){
   const[stats,setStats]=useState<UserStats>({billCount:0,reminderCount:0,streakMonths:0,totalTracked:0,monthsSubscribed:0,loggedInLate:false,loggedInEarly:false,addedBillWithinHour:false,upgraded:false});
   const[modalOpen,setModalOpen]=useState(false);
   const[editingBill,setEditingBill]=useState<Bill|null>(null);
+  const[confirmPref,setConfirmPref]=useState(true);
+  const[dismissedConfirm,setDismissedConfirm]=useState<string[]>([]);
+  const[downgradeNudge,setDowngradeNudge]=useState<{show:boolean;lower:string;price:string;losePerks:string[];billCount:number;limit:number}|null>(null);
   const[onboardingStep,setOnboardingStep]=useState(0);
   const[onboardingDismissed,setOnboardingDismissed]=useState(false);
   const[billName,setBillName]=useState('');
@@ -137,6 +141,8 @@ function DashboardInner(){
   const[mounted,setMounted]=useState(false);
   useEffect(()=>{
     setMounted(true);
+    const dismissed=JSON.parse(localStorage.getItem('nyra_dismissed_confirms')||'[]');
+    setDismissedConfirm(dismissed);
     const step=parseInt(localStorage.getItem('nyra_onboarding_step')||'0');
     const dismissed=localStorage.getItem('nyra_onboarding_dismissed')==='1';
     setOnboardingStep(step);
@@ -175,6 +181,7 @@ function DashboardInner(){
         setUserName(prof.full_name?.split(' ')[0]||urlName||'there');
         setUserEmail(user.email||'');
         setUserPhone(prof.phone_number||'');
+        setConfirmPref(prof.confirm_payments!==false);
         const plan=prof.plan||'Plus';setUserPlan(plan);
         setPlanLimit(plan==='Basic'?5:plan==='Power'?999:15);
         const created=new Date(prof.created_at);
@@ -228,7 +235,18 @@ function DashboardInner(){
   async function deleteBill(id:string){
     if(!confirm('Remove this bill?'))return;
     await supabase.from('bills').delete().eq('id',id);
-    setBills(prev=>prev.filter(b=>b.id!==id));
+    const newBills=bills.filter(b=>b.id!==id);
+    setBills(newBills);
+    // Check if they could downgrade
+    const count=newBills.length;
+    const PLAN_LIMITS:{[k:string]:{limit:number,lower:string,price:string,losePerks:string[]}}={
+      Plus:{limit:5,lower:'Basic',price:'$3.39/mo',losePerks:['AI coach','Statement upload','Analytics','Full badge collection','Learn tab']},
+      Power:{limit:15,lower:'Plus',price:'$5.65/mo',losePerks:['Unlimited AI messages','AI memory','Proactive insights','Secret badges']},
+    };
+    const nudge=PLAN_LIMITS[userPlan];
+    if(nudge&&count<=nudge.limit){
+      setDowngradeNudge({show:true,lower:nudge.lower,price:nudge.price,losePerks:nudge.losePerks,billCount:count,limit:nudge.limit});
+    }
   }
 
   const posTut=useCallback((i:number)=>{
@@ -269,6 +287,46 @@ function DashboardInner(){
     if(m<6)return`${6-m} more month${6-m>1?'s':''} until the 🌊 Heatwave badge!`;
     if(m<12)return`${12-m} more month${12-m>1?'s':''} until the 💎 Untouchable badge!`;
     return'You\'re a bill-paying legend. Keep the streak alive! 👑';
+  }
+
+  // ── Payment Confirmation ─────────────────────────────────────────────────────
+  async function confirmPayment(bill:Bill, paid:boolean){
+    const{data:{user}}=await supabase.auth.getUser();
+    if(!user) return;
+    // Log to payment_history
+    await supabase.from('payment_history').insert({
+      user_id:user.id, bill_id:bill.id,
+      amount:bill.amount, confirmed:paid
+    });
+    // Roll due date forward one month if paid
+    if(paid){
+      const current=new Date(bill.due_date+'T00:00:00');
+      current.setMonth(current.getMonth()+1);
+      const newDue=current.toISOString().split('T')[0];
+      await supabase.from('bills').update({due_date:newDue,last_confirmed_at:new Date().toISOString(),last_paid_amount:bill.amount}).eq('id',bill.id);
+      setBills(prev=>prev.map(b=>b.id===bill.id?{...b,due_date:newDue}:b));
+    }
+    // Dismiss this bill from confirmation banner
+    const updated=[...dismissedConfirm,bill.id];
+    setDismissedConfirm(updated);
+    localStorage.setItem('nyra_dismissed_confirms',JSON.stringify(updated));
+  }
+
+  function dismissAllConfirms(billIds:string[]){
+    const updated=[...dismissedConfirm,...billIds];
+    setDismissedConfirm(updated);
+    localStorage.setItem('nyra_dismissed_confirms',JSON.stringify(updated));
+    // Auto-assume paid and roll forward
+    billIds.forEach(id=>{
+      const bill=bills.find(b=>b.id===id);
+      if(bill){
+        const current=new Date(bill.due_date+'T00:00:00');
+        current.setMonth(current.getMonth()+1);
+        const newDue=current.toISOString().split('T')[0];
+        supabase.from('bills').update({due_date:newDue}).eq('id',id);
+        setBills(prev=>prev.map(b=>b.id===id?{...b,due_date:newDue}:b));
+      }
+    });
   }
 
   // ── Money IQ Score (0–100) ────────────────────────────────────────────────
@@ -464,6 +522,7 @@ function DashboardInner(){
       .chip-soon{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.2);}
       .chip-ok{background:var(--blue-pale);color:var(--blue);border:1px solid rgba(33,119,209,.15);}
       .chip-urgent{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.18);}
+      .chip-warn{background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.2);}
       .b-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;font-weight:700;color:var(--text);}
       .b-acts{display:flex;gap:4px;}
       .b-act{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:.7rem;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .2s;}
@@ -500,6 +559,39 @@ function DashboardInner(){
       .wimt-learn-btn{flex:1;background:var(--blue);color:white;border:none;padding:12px;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;}
       .wimt-close-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:12px 20px;border-radius:12px;font-size:.84rem;cursor:pointer;transition:all .2s;}
       .wimt-close-btn:hover{background:var(--blue-pale);color:var(--blue);}
+
+
+      /* PAYMENT CONFIRMATION BANNER */
+      .confirm-banner{background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(33,119,209,.03));border:1px solid rgba(245,158,11,.2);border-radius:16px;padding:16px 20px;margin-bottom:14px;}
+      .confirm-banner-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+      .confirm-banner-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.88rem;color:var(--text);display:flex;align-items:center;gap:8px;}
+      .confirm-bill-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(245,158,11,.1);}
+      .confirm-bill-row:last-child{border-bottom:none;}
+      .confirm-bill-name{font-size:.84rem;font-weight:600;color:var(--text);flex:1;}
+      .confirm-bill-amt{font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;font-weight:700;color:var(--text2);margin-right:8px;}
+      .confirm-paid-btn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:100px;border:1.5px solid rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--success);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;}
+      .confirm-paid-btn:hover{background:rgba(34,197,94,.18);}
+      .confirm-missed-btn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:100px;border:1.5px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);color:var(--danger);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .2s;}
+      .confirm-missed-btn:hover{background:rgba(239,68,68,.12);}
+      .confirm-dismiss{background:none;border:none;font-size:.68rem;color:var(--muted);cursor:pointer;padding:2px 6px;}
+      /* DOWNGRADE NUDGE */
+      .dg-nudge-overlay{position:fixed;inset:0;z-index:600;background:rgba(12,21,36,.5);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:20px;}
+      .dg-nudge{background:white;border-radius:26px;padding:36px;max-width:440px;width:100%;box-shadow:0 28px 80px rgba(12,21,36,.28);animation:mpop .4s cubic-bezier(.34,1.56,.64,1);position:relative;}
+      .dg-nudge::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--warn),var(--success));border-radius:26px 26px 0 0;}
+      .dg-nudge-em{font-size:2.5rem;margin-bottom:14px;text-align:center;}
+      .dg-nudge-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.15rem;color:var(--text);margin-bottom:8px;text-align:center;}
+      .dg-nudge-sub{font-size:.84rem;color:var(--text2);line-height:1.75;margin-bottom:18px;text-align:center;}
+      .dg-lose-title{font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+      .dg-lose-list{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;background:rgba(239,68,68,.04);border:1px solid rgba(239,68,68,.12);border-radius:14px;padding:14px 16px;}
+      .dg-lose-item{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text2);}
+      .dg-lose-item::before{content:'✗';color:var(--danger);font-weight:700;flex-shrink:0;}
+      .dg-save-card{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.18);border-radius:14px;padding:14px 16px;margin-bottom:20px;text-align:center;}
+      .dg-save-amt{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;color:var(--success);}
+      .dg-save-lbl{font-size:.72rem;color:var(--muted);margin-top:2px;}
+      .dg-btns{display:flex;flex-direction:column;gap:8px;}
+      .dg-downgrade-btn{background:var(--success);color:white;border:none;padding:13px;border-radius:14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;width:100%;}
+      .dg-stay-btn{background:var(--blue);color:white;border:none;padding:13px;border-radius:14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;width:100%;}
+      .dg-dismiss{background:transparent;border:1px solid var(--border);color:var(--muted);padding:10px;border-radius:14px;font-size:.82rem;cursor:pointer;width:100%;}
       /* ONBOARDING BANNER */
       .onboard-banner{background:linear-gradient(135deg,rgba(33,119,209,.07),rgba(195,154,53,.04));border:1px solid rgba(33,119,209,.15);border-radius:22px;padding:20px 24px;margin-bottom:20px;opacity:0;animation:fu .5s ease .1s forwards;}
       .onboard-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -1154,6 +1246,34 @@ function DashboardInner(){
             <div><div className="p-t">Your Bills</div><div className="p-s">{bills.length} bills · ${totalDue.toLocaleString()}/month total</div></div>
             <div className="ftabs"><button className="ft on">All</button><button className="ft">Due Soon</button></div>
           </div>
+          {/* PAYMENT CONFIRMATION BANNER */}
+          {mounted&&confirmPref&&(()=>{
+            const pastDue=bills.filter(b=>{
+              const d=daysUntil(b.due_date);
+              return d<0&&!dismissedConfirm.includes(b.id);
+            });
+            if(pastDue.length===0) return null;
+            return(
+              <div className="confirm-banner">
+                <div className="confirm-banner-hd">
+                  <div className="confirm-banner-title">
+                    🔔 Did you pay these bills?
+                  </div>
+                  <button className="confirm-dismiss" onClick={()=>dismissAllConfirms(pastDue.map(b=>b.id))}>
+                    Auto-assume paid ✓
+                  </button>
+                </div>
+                {pastDue.map(bill=>(
+                  <div key={bill.id} className="confirm-bill-row">
+                    <div className="confirm-bill-name">{bill.name}</div>
+                    <div className="confirm-bill-amt">${bill.amount.toLocaleString()}</div>
+                    <button className="confirm-paid-btn" onClick={()=>confirmPayment(bill,true)}>✓ Paid</button>
+                    <button className="confirm-missed-btn" onClick={()=>confirmPayment(bill,false)}>✗ Missed</button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           <div className="bills-list">
             {loading?(<div className="empty"><div className="empty-ic">⏳</div><div className="empty-h">Loading...</div></div>)
             :bills.length===0?(<div className="empty"><div className="empty-ic">📋</div><div className="empty-h">No bills yet</div><div className="empty-s">Click &quot;+ Add Bill&quot; to get started and earn your first badge!</div></div>)
@@ -1215,7 +1335,22 @@ function DashboardInner(){
       paydayDate={paydayDate}
       editBill={editingBill}
       onClose={()=>setEditingBill(null)}
-      onSaved={(updated)=>{setBills(prev=>prev.map(b=>b.id===updated.id?updated:b));setEditingBill(null);}}
+      onSaved={(updated)=>{
+        if(updated._deleted){
+          const newBills=bills.filter(b=>b.id!==updated.id);
+          setBills(newBills);
+          // Check downgrade nudge
+          const PLAN_LIMITS:{[k:string]:{limit:number,lower:string,price:string,losePerks:string[]}}={
+            Plus:{limit:5,lower:'Basic',price:'$3.39/mo',losePerks:['AI coach','Statement upload','Analytics','Full badge collection','Learn tab']},
+            Power:{limit:15,lower:'Plus',price:'$5.65/mo',losePerks:['Unlimited AI messages','AI memory','Proactive insights','Secret badges']},
+          };
+          const nudge=PLAN_LIMITS[userPlan];
+          if(nudge&&newBills.length<=nudge.limit) setDowngradeNudge({show:true,lower:nudge.lower,price:nudge.price,losePerks:nudge.losePerks,billCount:newBills.length,limit:nudge.limit});
+        } else {
+          setBills(prev=>prev.map(b=>b.id===updated.id?updated:b));
+        }
+        setEditingBill(null);
+      }}
     />}
     {modalOpen&&<AddBillModal
       userPlan={userPlan}
@@ -1264,6 +1399,36 @@ function DashboardInner(){
           </div>
           <button className="shr-copy" onClick={()=>copyShare(shareBadge)}>{copied?'✅ Copied!':'📋 Copy text to clipboard'}</button>
           <button className="shr-dismiss" onClick={()=>setShareOpen(false)}>Close</button>
+        </div>
+      </div>
+    )}
+
+    {/* DOWNGRADE NUDGE MODAL */}
+    {downgradeNudge?.show&&(
+      <div className="dg-nudge-overlay" onClick={e=>{if(e.target===e.currentTarget)setDowngradeNudge(null);}}>
+        <div className="dg-nudge">
+          <div className="dg-nudge-em">💡</div>
+          <div className="dg-nudge-title">You could save money</div>
+          <div className="dg-nudge-sub">
+            You now have <strong>{downgradeNudge.billCount} bill{downgradeNudge.billCount!==1?'s':''}</strong> — that fits within the <strong>{downgradeNudge.lower}</strong> plan limit of {downgradeNudge.limit}. You could downgrade and save.
+          </div>
+          <div className="dg-save-card">
+            <div className="dg-save-amt">Save up to ${userPlan==='Power'?'2.61':'2.26'}/mo</div>
+            <div className="dg-save-lbl">by switching to {downgradeNudge.lower} at {downgradeNudge.price}</div>
+          </div>
+          <div className="dg-lose-title">But you&apos;d lose these perks:</div>
+          <div className="dg-lose-list">
+            {downgradeNudge.losePerks.map(p=><div key={p} className="dg-lose-item">{p}</div>)}
+          </div>
+          <div className="dg-btns">
+            <button className="dg-downgrade-btn" onClick={()=>{window.location.href=`/settings#plan`;setDowngradeNudge(null);}}>
+              💰 Downgrade to {downgradeNudge.lower} & save →
+            </button>
+            <button className="dg-stay-btn" onClick={()=>setDowngradeNudge(null)}>
+              Keep {userPlan} — the perks are worth it
+            </button>
+            <button className="dg-dismiss" onClick={()=>setDowngradeNudge(null)}>Dismiss</button>
+          </div>
         </div>
       </div>
     )}
@@ -1852,9 +2017,20 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,editBill,onClos
           )}
         </>)}
 
-        <button className="m-sub" onClick={saveBill} disabled={saving||!canSave}>
-          {saving?'Saving...':(isEditing?(billType==='regular'?'Update Bill →':'Update Credit Card →'):(billType==='regular'?'Save Bill →':'Save Credit Card →'))}
-        </button>
+        <div style={{display:'flex',gap:10}}>
+          <button className="m-sub" onClick={saveBill} disabled={saving||!canSave} style={{flex:1}}>
+            {saving?'Saving...':(isEditing?(billType==='regular'?'Update Bill →':'Update Credit Card →'):(billType==='regular'?'Save Bill →':'Save Credit Card →'))}
+          </button>
+          {isEditing&&(
+            <button onClick={async()=>{
+              if(!confirm('Delete this bill? This cannot be undone.'))return;
+              await supabase.from('bills').delete().eq('id',editBill.id);
+              onSaved({...editBill,_deleted:true});
+            }} style={{padding:'12px 18px',borderRadius:14,border:'1.5px solid rgba(239,68,68,.2)',background:'rgba(239,68,68,.06)',color:'var(--danger)',fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:'.82rem',fontWeight:700,cursor:'pointer',transition:'all .2s',flexShrink:0}}>
+              🗑 Delete
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
