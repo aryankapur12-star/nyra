@@ -107,6 +107,9 @@ function DashboardInner(){
   const[loading,setLoading]=useState(true);
   const[stats,setStats]=useState<UserStats>({billCount:0,reminderCount:0,streakMonths:0,totalTracked:0,monthsSubscribed:0,loggedInLate:false,loggedInEarly:false,addedBillWithinHour:false,upgraded:false});
   const[modalOpen,setModalOpen]=useState(false);
+  const[editingBill,setEditingBill]=useState<Bill|null>(null);
+  const[onboardingStep,setOnboardingStep]=useState(0);
+  const[onboardingDismissed,setOnboardingDismissed]=useState(false);
   const[billName,setBillName]=useState('');
   const[billAmt,setBillAmt]=useState('');
   const[billDue,setBillDue]=useState('');
@@ -131,7 +134,13 @@ function DashboardInner(){
   const[wimtLoading,setWimtLoading]=useState(false);
   // Mounted (for localStorage SSR safety)
   const[mounted,setMounted]=useState(false);
-  useEffect(()=>setMounted(true),[]);
+  useEffect(()=>{
+    setMounted(true);
+    const step=parseInt(localStorage.getItem('nyra_onboarding_step')||'0');
+    const dismissed=localStorage.getItem('nyra_onboarding_dismissed')==='1';
+    setOnboardingStep(step);
+    setOnboardingDismissed(dismissed);
+  },[]);
   // Mobile nav
   const[mobOpen,setMobOpen]=useState(false);
   useEffect(()=>{document.body.style.overflow=mobOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[ mobOpen]);
@@ -489,6 +498,25 @@ function DashboardInner(){
       .wimt-learn-btn{flex:1;background:var(--blue);color:white;border:none;padding:12px;border-radius:12px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.84rem;font-weight:700;cursor:pointer;}
       .wimt-close-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:12px 20px;border-radius:12px;font-size:.84rem;cursor:pointer;transition:all .2s;}
       .wimt-close-btn:hover{background:var(--blue-pale);color:var(--blue);}
+      /* ONBOARDING BANNER */
+      .onboard-banner{background:linear-gradient(135deg,rgba(33,119,209,.07),rgba(195,154,53,.04));border:1px solid rgba(33,119,209,.15);border-radius:22px;padding:20px 24px;margin-bottom:20px;opacity:0;animation:fu .5s ease .1s forwards;}
+      .onboard-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+      .onboard-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--text);}
+      .onboard-dismiss{background:none;border:none;font-size:.7rem;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:8px;}
+      .onboard-dismiss:hover{color:var(--danger);}
+      .onboard-steps{display:flex;gap:8px;flex-wrap:wrap;}
+      .onboard-step{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1.5px solid var(--border);background:white;flex:1;min-width:160px;cursor:pointer;transition:all .2s;position:relative;}
+      .onboard-step.done{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.25);}
+      .onboard-step.active{background:var(--blue-pale);border-color:var(--blue);box-shadow:0 0 0 3px rgba(33,119,209,.08);}
+      .onboard-step:hover:not(.done){border-color:var(--blue);background:var(--blue-pale);}
+      .onboard-step-ic{font-size:1.2rem;flex-shrink:0;}
+      .onboard-step-label{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.78rem;color:var(--text);}
+      .onboard-step-sub{font-size:.62rem;color:var(--muted);margin-top:1px;}
+      .onboard-check{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:white;font-weight:700;}
+      .onboard-progress{display:flex;gap:4px;margin-top:12px;}
+      .onboard-prog-dot{height:3px;border-radius:2px;flex:1;background:var(--border);transition:background .3s;}
+      .onboard-prog-dot.done{background:var(--success);}
+      .onboard-prog-dot.active{background:var(--blue);}
       /* PAYDAY CARD */
       .payday-card{background:linear-gradient(135deg,rgba(34,197,94,.05),rgba(33,119,209,.04));border:1px solid rgba(34,197,94,.18);border-radius:22px;padding:20px 24px;margin-bottom:20px;opacity:0;animation:fu .5s ease .22s forwards;}
       .payday-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -926,6 +954,47 @@ function DashboardInner(){
         </div>
       </div>
 
+      {/* ONBOARDING BANNER */}
+      {mounted&&!onboardingDismissed&&onboardingStep<4&&(()=>{
+        const steps=[
+          {ic:'➕',label:'Add your first bill',sub:'Takes 30 seconds',key:'bills',done:bills.length>0},
+          {ic:'📱',label:'Set your phone number',sub:'For SMS reminders',key:'phone',done:!!userPhone},
+          {ic:'💰',label:'Set up Payday',sub:'See your cashflow',key:'payday',done:paydaySaved},
+          {ic:'✦',label:'Try the AI coach',sub:'Ask Nyra anything',key:'ai',done:onboardingStep>=3},
+        ];
+        const completedCount=steps.filter(s=>s.done).length;
+        if(completedCount===4){localStorage.setItem('nyra_onboarding_dismissed','1');return null;}
+        return(
+          <div className="onboard-banner">
+            <div className="onboard-hd">
+              <div className="onboard-title">👋 Welcome to Nyra — let&apos;s get you set up</div>
+              <button className="onboard-dismiss" onClick={()=>{setOnboardingDismissed(true);localStorage.setItem('nyra_onboarding_dismissed','1');}}>Skip setup</button>
+            </div>
+            <div className="onboard-steps">
+              {steps.map((step,i)=>(
+                <div key={step.key} className={`onboard-step ${step.done?'done':i===steps.findIndex(s=>!s.done)?'active':''}`}
+                  onClick={()=>{
+                    if(step.key==='bills') setModalOpen(true);
+                    else if(step.key==='phone') window.location.href='/settings';
+                    else if(step.key==='payday') setPaydayOpen(true);
+                    else if(step.key==='ai'){const btn=document.querySelector('.ai-bubble-btn') as HTMLElement;btn?.click();}
+                    if(!step.done){const next=Math.max(onboardingStep,i+1);setOnboardingStep(next);localStorage.setItem('nyra_onboarding_step',String(next));}
+                  }}>
+                  {step.done&&<div className="onboard-check">✓</div>}
+                  <span className="onboard-step-ic">{step.ic}</span>
+                  <div><div className="onboard-step-label">{step.label}</div><div className="onboard-step-sub">{step.sub}</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="onboard-progress">
+              {steps.map((step,i)=>(
+                <div key={i} className={`onboard-prog-dot ${step.done?'done':i===steps.findIndex(s=>!s.done)?'active':''}`}/>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Streak banner — ALL tiers */}
       <div className="streak">
         <div className="s-fire">🔥</div>
@@ -1094,7 +1163,7 @@ function DashboardInner(){
                 <div className="b-amt">${bill.amount.toLocaleString()}</div>
                 <div className="b-acts">
                   <button className="wimt-btn" onClick={()=>openWimt(bill)} title="What if I miss this?">🚨 Miss it?</button>
-                  <button className="b-act">✏️</button>
+                  <button className="b-act" onClick={()=>setEditingBill(bill)}>✏️</button>
                   <button className="b-act" onClick={()=>deleteBill(bill.id)}>🗑</button>
                 </div>
               </div>
@@ -1135,7 +1204,17 @@ function DashboardInner(){
       </div>
     </main>
 
-    {/* ADD BILL MODAL */}
+    {/* ADD BILL MODAL / EDIT MODAL */}
+    {editingBill&&<AddBillModal
+      userPlan={userPlan}
+      bills={bills}
+      stats={stats}
+      paydayAmt={paydayAmt}
+      paydayDate={paydayDate}
+      editBill={editingBill}
+      onClose={()=>setEditingBill(null)}
+      onSaved={(updated)=>{setBills(prev=>prev.map(b=>b.id===updated.id?updated:b));setEditingBill(null);}}
+    />}
     {modalOpen&&<AddBillModal
       userPlan={userPlan}
       bills={bills}
@@ -1415,11 +1494,28 @@ function calcCCDueDate(closingDay:number, bank:string):string {
 // ─── AddBillModal Component ───────────────────────────────────────────────────
 interface AddBillModalProps {
   userPlan:string; bills:any[]; stats:any; paydayAmt:string; paydayDate:string;
+  editBill?:any;
   onClose:()=>void; onSaved:(bill:any)=>void;
 }
 
-function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved}:AddBillModalProps){
-  const[billType,setBillType]=useState<'regular'|'credit'>('regular');
+function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,editBill,onClose,onSaved}:AddBillModalProps){
+  const isEditing=!!editBill;
+  const[billType,setBillType]=useState<'regular'|'credit'>(editBill?.bill_type==='credit_card'?'credit':'regular');
+  useEffect(()=>{
+    if(editBill){
+      setBillName(editBill.name||'');
+      setBillAmt(String(editBill.amount||''));
+      setBillDue(editBill.due_date||'');
+      setBillCycle(editBill.recurring||'Monthly');
+      setBillRemind(String(editBill.remind_days_before||3));
+      if(editBill.bill_type==='credit_card'){
+        setCcNick(editBill.name||'');
+        setCcBank(editBill.cc_bank||'RBC');
+        setCcAmt(String(editBill.amount||''));
+        setCcDue(editBill.due_date||'');
+      }
+    }
+  },[editBill]);
   // Regular bill state
   const[billName,setBillName]=useState('');
   const[billAmt,setBillAmt]=useState('');
@@ -1563,6 +1659,14 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved
     try{
       const {data:{user}}=await supabase.auth.getUser();
       if(!user){setSaving(false);return;}
+      if(isEditing){
+        const updates=billType==='regular'
+          ?{name:billName,amount:parseFloat(billAmt),due_date:billDue,recurring:billCycle,remind_days_before:parseInt(billRemind)}
+          :{name:ccNick||`${ccBank} Credit Card`,amount:parseFloat(ccAmt)||0,due_date:ccDue,recurring:'Monthly',remind_days_before:parseInt(ccRemind),bill_type:'credit_card',cc_bank:ccBank};
+        const{data,error}=await supabase.from('bills').update(updates).eq('id',editBill.id).select().single();
+        if(!error&&data) onSaved(data);
+        setSaving(false);return;
+      }
       if(billType==='regular'){
         const{data,error}=await supabase.from('bills').insert({
           user_id:user.id,name:billName,amount:parseFloat(billAmt),
@@ -1603,8 +1707,8 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved
         </div>
 
         {billType==='regular'&&(<>
-          <div className="m-ti">Add a Bill</div>
-          <div className="m-su">Nyra will remind you before it&apos;s due.</div>
+          <div className="m-ti">{isEditing?'Edit Bill':'Add a Bill'}</div>
+          <div className="m-su">{isEditing?'Update your bill details below.':"Nyra will remind you before it's due."}</div>
           <div className="mfg">
             <label>Bill name</label>
             <input type="text" placeholder="e.g. Netflix, Rent, Rogers" value={billName} onChange={e=>handleName(e.target.value)}/>
@@ -1621,7 +1725,7 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved
         </>)}
 
         {billType==='credit'&&(<>
-          <div className="m-ti">Add a Credit Card</div>
+          <div className="m-ti">{isEditing?'Edit Credit Card':'Add a Credit Card'}</div>
           <div className="m-su">Nyra calculates your due date and suggests the best reminder time.</div>
 
           {/* UPLOAD — Plus/Power only */}
@@ -1747,7 +1851,7 @@ function AddBillModal({userPlan,bills,stats,paydayAmt,paydayDate,onClose,onSaved
         </>)}
 
         <button className="m-sub" onClick={saveBill} disabled={saving||!canSave}>
-          {saving?'Saving...':billType==='regular'?'Save Bill →':'Save Credit Card →'}
+          {saving?'Saving...':(isEditing?(billType==='regular'?'Update Bill →':'Update Credit Card →'):(billType==='regular'?'Save Bill →':'Save Credit Card →'))}
         </button>
       </div>
     </div>

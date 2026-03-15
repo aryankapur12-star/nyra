@@ -27,6 +27,9 @@ function SignupInner() {
   const searchParams = useSearchParams();
   const plan  = searchParams.get('plan')  || 'Plus';
   const price = parseInt(searchParams.get('price') || '5');
+  const taxRate = 0.13;
+  const taxAmt = (price * taxRate).toFixed(2);
+  const totalAmt = (price * (1 + taxRate)).toFixed(2);
 
   const [step, setStep]       = useState(1);
   const [loading, setLoading] = useState(false);
@@ -69,6 +72,17 @@ function SignupInner() {
         full_name: `${form.firstName} ${form.lastName}`,
         phone_number: form.phone,
       });
+
+      // 2b. Send welcome email
+      fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          name: form.firstName,
+          plan,
+        }),
+      }).catch(() => {}); // fire and forget
 
       // 3. Create Stripe checkout session
       const res = await fetch('/api/checkout', {
@@ -278,7 +292,7 @@ function SignupInner() {
               <div className="step-panel">
                 <div className="plan-chip">
                   <span className="chip-dot" />
-                  {plan} Plan — ${price}/month
+                  {plan} Plan — ${price}/mo + ${taxAmt} tax = ${totalAmt}/mo
                 </div>
                 <div className="card-eyebrow">Step 1 of 3</div>
                 <h1 className="card-h">Tell us about you.</h1>
@@ -355,7 +369,7 @@ function SignupInner() {
                       <div style={{ fontSize: '.75rem', color: 'var(--muted)', marginTop: 2 }}>{planInfo.sub}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: '1.4rem', color: 'var(--blue)' }}>${price}</div>
+                      <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 800, fontSize: '1.4rem', color: 'var(--blue)' }}>${totalAmt}</div>
                       <div style={{ fontSize: '.68rem', color: 'var(--muted)' }}>/month</div>
                     </div>
                   </div>
@@ -378,15 +392,17 @@ function SignupInner() {
                   <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: '.85rem', color: 'var(--text)', marginBottom: 10 }}>Order Summary</div>
                   <div className="summary-row">
                     <span>Nyra {plan}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>${price}/mo</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>${price}/mo + tax</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '.75rem', color: 'var(--muted)' }}>
                     <span>20% supports Financial Futures Education</span>
                     <span style={{ color: 'var(--gold)' }}>💙</span>
                   </div>
+                  <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:'.8rem',color:'var(--muted)'}}><span>Subtotal</span><span>${price}.00</span></div>
+                  <div style={{display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:'.8rem',color:'var(--muted)'}}><span>HST/GST (13%)</span><span>${taxAmt}</span></div>
                   <div className="summary-total">
                     <span>Total today</span>
-                    <span>${price}.00</span>
+                    <span>${totalAmt}</span>
                   </div>
                 </div>
 

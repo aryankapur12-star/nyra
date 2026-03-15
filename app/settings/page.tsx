@@ -20,6 +20,7 @@ export default function SettingsPage(){
   const[leaderboardAnon,setLeaderboardAnon]=useState(true);
   const[leaderboardName,setLeaderboardName]=useState('');
   const[smsEnabled,setSmsEnabled]=useState(true);
+  const[emailPref,setEmailPref]=useState<'none'|'email'|'both'>('both');
   const[reminderTime,setReminderTime]=useState('09:00');
   const[saving,setSaving]=useState<string|null>(null);
   const[saved,setSaved]=useState<string|null>(null);
@@ -45,6 +46,7 @@ export default function SettingsPage(){
         setUserPhone(prof.phone||'');
         setUserPlan(prof.plan||'Plus');
         setSmsEnabled(prof.sms_enabled!==false);
+        setEmailPref(prof.email_pref||'both');
         setReminderTime(prof.reminder_time||'09:00');
         setLeaderboardAnon(prof.leaderboard_anon!==false);
         setLeaderboardName(prof.leaderboard_name||'');
@@ -581,6 +583,23 @@ export default function SettingsPage(){
                       ⚠️ SMS reminders are off. You won&apos;t receive any texts about upcoming bills. Make sure to check Nyra manually.
                     </div>
                   )}
+                  <div className="field" style={{marginTop:20,paddingTop:20,borderTop:'1px solid var(--border)'}}>
+                    <label>Email reminders <SaveIndicator field="email_pref"/></label>
+                    <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:6}}>
+                      {([['none','🚫','No email reminders','SMS only'],['email','📧','Email reminders only','Send reminders to my email'],['both','📱📧','SMS + Email','Get reminders on both']] as [string,string,string,string][]).map(([val,ic,label,sub])=>(
+                        <div key={val} onClick={()=>{setEmailPref(val as any);autosave('email_pref',val);}}
+                          style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:12,border:`1.5px solid ${emailPref===val?'var(--blue)':'var(--border)'}`,background:emailPref===val?'var(--blue-pale)':'white',cursor:'pointer',transition:'all .2s'}}>
+                          <span style={{fontSize:'1.1rem'}}>{ic}</span>
+                          <div style={{flex:1}}>
+                            <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:600,fontSize:'.82rem',color:'var(--text)'}}>{label}</div>
+                            <div style={{fontSize:'.68rem',color:'var(--muted)',marginTop:1}}>{sub}</div>
+                          </div>
+                          {emailPref===val&&<span style={{color:'var(--blue)',fontWeight:700,fontSize:'.8rem'}}>✓</span>}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="field-hint" style={{marginTop:8}}>Make sure your email is confirmed in your account.</div>
+                  </div>
                 </div>
               </div>
             )}
