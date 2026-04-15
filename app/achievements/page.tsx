@@ -544,14 +544,14 @@ export default function AchievementsPage(){
 
     {/* SIDEBAR */}
     <aside className="sb">
-      <div className="sb-logo"><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></div>
+      <a href="/dashboard" className="sb-logo" style={{textDecoration:"none"}}><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></a>
       <div className="nav-lbl">Menu</div>
       <a className="ni" href="/dashboard"><span className="ni-ic">📋</span>My Bills</a>
       <a className="ni" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
-      <a className="ni on" href="/achievements"><span className="ni-ic">🏆</span>Achievements</a>
       <a className="ni" href="/learn"><span className="ni-ic">🧠</span>Learn</a>
+      <a className="ni on" href="/achievements"><span className="ni-ic">🏆</span>Achievements</a>
       <a className="ni" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
-      <div className="ni"><span className="ni-ic">⚙️</span>Settings</div>
+      <a className="ni" href="/settings"><span className="ni-ic">⚙️</span>Settings</a>
       <div className="nav-lbl">Resources</div>
       <a className="ni" href="https://financialfutureseducation.com/" target="_blank" rel="noreferrer"><span className="ni-ic">🎓</span>FFE Website</a>
       <div className="sb-bot">

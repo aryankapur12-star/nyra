@@ -537,11 +537,12 @@ export default function LandingPage() {
         <a href="#" className="logo">Nyra<span className="logo-gem" /></a>
         <a href="https://financialfutureseducation.com/" className="ffe-link" target="_blank" rel="noreferrer">Financial Futures Education ↗</a>
         <div className="nav-right">
-          <a href="/how-it-works" className="nl">How it works</a>
-          <a href="#features" className="nl">Features</a>
-          <a href="#pricing" className="nl">Pricing</a>
-          <a href="#pricing" className="nbtn">Get started</a>
-        </div>
+  <a href="/how-it-works" className="nl">How it works</a>
+  <a href="#features" className="nl">Features</a>
+  <a href="#pricing" className="nl">Pricing</a>
+  <a href="/login" className="nl">Sign in</a>
+  <a href="#pricing" className="nbtn">Get started</a>
+</div>
       </nav>
 
       {/* HERO */}

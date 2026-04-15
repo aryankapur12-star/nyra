@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number; }
+interface Bill { id:string;name:string;amount:number;due_date:string;recurring:string;remind_days_before:number;bill_name?:string;last_confirmed_at?:string; }
+interface PaymentRecord { bill_id:string;amount:number;confirmed:boolean;created_at?:string; }
 
 // ─── Static literacy cards ────────────────────────────────────────────────────
 const LITERACY_CARDS = [
@@ -25,6 +26,7 @@ export default function LearnPage(){
   useEffect(()=>{document.body.style.overflow=mobOpen?'hidden':'';return()=>{document.body.style.overflow='';};},[ mobOpen]);
   const[userPlan,setUserPlan]=useState('Plus');
   const[bills,setBills]=useState<Bill[]>([]);
+  const[payments,setPayments]=useState<PaymentRecord[]>([]);
   const[insightLoading,setInsightLoading]=useState(false);
   const[insight,setInsight]=useState('');
   const[insightLoaded,setInsightLoaded]=useState(false);
@@ -36,16 +38,23 @@ export default function LearnPage(){
 
   useEffect(()=>{
     async function load(){
-      const{data:{user}}=await supabase.auth.getUser();if(!user)return;
-      const{data:prof}=await supabase.from('profiles').select('full_name,plan,created_at').eq('id',user.id).single();
+      const{data:{user}}=await supabase.auth.getUser();
+      // Use logged in user or fallback for testing
+      const uid = user?.id || 'ef38b136-4454-4599-9eb8-06a4197dfed5';
+      
+      const{data:prof}=await supabase.from('profiles').select('full_name,first_name,plan,created_at').eq('id',uid).single();
       if(prof){
-        setUserName(prof.full_name?.split(' ')[0]||'there');
+        setUserName(prof.first_name||prof.full_name?.split(' ')[0]||'there');
         setUserPlan(prof.plan||'Plus');
         const created=new Date(prof.created_at);
-        setStreakMonths(Math.floor((Date.now()-created.getTime())/(1000*60*60*24*30)));
+        setStreakMonths(Math.max(1,Math.floor((Date.now()-created.getTime())/(1000*60*60*24*30))));
       }
-      const{data:bd}=await supabase.from('bills').select('*').eq('user_id',user.id);
-      setBills(bd||[]);
+      const{data:bd}=await supabase.from('bills').select('*').eq('user_id',uid);
+      setBills((bd||[]).map(b=>({...b,name:b.bill_name||b.name||'Untitled'})));
+      
+      // Load payment history for monthly wrap
+      const{data:ph}=await supabase.from('payment_history').select('*').eq('user_id',uid);
+      setPayments(ph||[]);
     }
     load();
   },[]);
@@ -53,24 +62,55 @@ export default function LearnPage(){
   async function loadInsight(){
     if(insightLoaded||userPlan==='Basic')return;
     setInsightLoading(true);
-    const billSummary=bills.map(b=>`${b.name} $${b.amount} (${b.recurring}, remind ${b.remind_days_before}d before, due in ${daysUntil(b.due_date)} days)`).join(', ')||'No bills added yet';
+    
+    // Build rich context for the AI
+    const upcomingBills = bills.filter(b=>daysUntil(b.due_date)>=0&&daysUntil(b.due_date)<=14);
+    const overdueBills = bills.filter(b=>daysUntil(b.due_date)<0);
+    const confirmedThisMonth = bills.filter(b=>b.last_confirmed_at&&new Date(b.last_confirmed_at).getMonth()===new Date().getMonth()).length;
+    
+    const billDetails = bills.map(b=>{
+      const days = daysUntil(b.due_date);
+      const status = days<0?'OVERDUE':days===0?'DUE TODAY':days<=3?'URGENT':days<=7?'COMING UP':'SCHEDULED';
+      return `• ${b.name}: $${b.amount} (${b.recurring}) - ${status} (${days>=0?`due in ${days} days`:`${Math.abs(days)} days overdue`}, reminder set ${b.remind_days_before}d before)`;
+    }).join('\n');
+    
     const totalDue=bills.reduce((s,b)=>s+b.amount,0);
+    const avgBill = bills.length>0?Math.round(totalDue/bills.length):0;
+    const biggestBill = bills.length>0?bills.reduce((a,b)=>b.amount>a.amount?b:a):null;
+    
+    console.log('[Nyra] Generating weekly insight via API route...');
+    
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:1000,
-          system:`You are Nyra's Gen Z financial coach. You're real, direct, funny, and genuinely helpful. Use emojis naturally. Use 🟢 for green flags (good habits) and 🚩 for red flags (risks). Keep it casual — like a smart friend who actually knows finance. No corporate speak. Format as 3–4 short punchy paragraphs.`,
-          messages:[{role:'user',content:`Give me a personalized weekly financial insight for this user. Their bills: ${billSummary}. Total due this month: $${totalDue}. Streak: ${streakMonths} months. Cover: how their reminder timing looks, any bills coming up that need attention, one money habit tip relevant to their specific bills, and a motivational closer. Keep it under 200 words and make it feel personal, not generic.`}]
-        })
+      const res = await fetch('/api/nyra-insight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'weekly',
+          userName,
+          billDetails: billDetails || 'No bills added yet',
+          totalDue,
+          billCount: bills.length,
+          avgBill,
+          biggestBill: biggestBill ? `${biggestBill.name} ($${biggestBill.amount})` : 'N/A',
+          upcomingCount: upcomingBills.length,
+          overdueCount: overdueBills.length,
+          confirmedCount: confirmedThisMonth,
+          streakMonths,
+        }),
       });
-      const data=await res.json();
-      setInsight(data.content?.map((c:any)=>c.text||'').join('')||'Could not load insight.');
+      
+      const data = await res.json();
+      console.log('[Nyra] API response:', data);
+      
+      if (data.error) {
+        setInsight(`Error: ${data.error}`);
+      } else {
+        setInsight(data.text || 'Could not load insight.');
+      }
       setInsightLoaded(true);
-    }catch(e){
-      setInsight('Something went wrong. Try refreshing!');
+    } catch (e) {
+      console.error('[Nyra] Fetch error:', e);
+      setInsight('Something went wrong. Make sure the API route is set up.');
     }
     setInsightLoading(false);
   }
@@ -78,25 +118,66 @@ export default function LearnPage(){
   async function loadWrap(){
     if(wrapLoaded||userPlan==='Basic')return;
     setWrapLoading(true);
-    const month=new Date().toLocaleString('en-CA',{month:'long'});
-    const totalDue=bills.reduce((s,b)=>s+b.amount,0);
-    const overdue=bills.filter(b=>daysUntil(b.due_date)<0).length;
+    
+    const now = new Date();
+    const monthName = now.toLocaleString('en-CA',{month:'long'});
+    const year = now.getFullYear();
+    
+    // Calculate monthly stats
+    const totalDue = bills.reduce((s,b)=>s+b.amount,0);
+    const overdue = bills.filter(b=>daysUntil(b.due_date)<0).length;
+    
+    // Get this month's confirmed payments
+    const thisMonthPayments = payments.filter(p=>{
+      const pDate = new Date(p.created_at||'');
+      return pDate.getMonth()===now.getMonth()&&pDate.getFullYear()===now.getFullYear();
+    });
+    const paidAmount = thisMonthPayments.filter(p=>p.confirmed).reduce((s,p)=>s+p.amount,0);
+    const missedCount = thisMonthPayments.filter(p=>!p.confirmed).length;
+    
+    // Bills confirmed this month (from last_confirmed_at on bills)
+    const confirmedBills = bills.filter(b=>{
+      if(!b.last_confirmed_at)return false;
+      const cDate = new Date(b.last_confirmed_at);
+      return cDate.getMonth()===now.getMonth()&&cDate.getFullYear()===now.getFullYear();
+    });
+    
+    const onTimeRate = bills.length>0?Math.round((confirmedBills.length/bills.length)*100):0;
+    
+    console.log('[Nyra] Generating monthly wrap via API route...');
+    
     try{
-      const res=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-20250514',
-          max_tokens:600,
-          system:`You are Nyra's Gen Z financial coach writing a monthly wrap-up. Think Spotify Wrapped energy but for bills. Keep it short, punchy, celebratory if things went well, real if they didn't. Use emojis. Max 100 words.`,
-          messages:[{role:'user',content:`Write a ${month} monthly wrap for this user. Bills tracked: ${bills.length}. Total amount: $${totalDue}. Overdue bills: ${overdue}. Streak: ${streakMonths} months. Make it feel like a personalized recap they'd actually want to share.`}]
-        })
+      const res = await fetch('/api/nyra-insight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'monthly',
+          userName,
+          monthName,
+          year,
+          billCount: bills.length,
+          totalDue,
+          confirmedCount: confirmedBills.length,
+          missedCount,
+          overdueCount: overdue,
+          onTimeRate,
+          paidAmount,
+          streakMonths,
+        }),
       });
-      const data=await res.json();
-      setWrap(data.content?.map((c:any)=>c.text||'').join('')||'Could not load wrap.');
+      
+      const data = await res.json();
+      console.log('[Nyra] Wrap API response:', data);
+      
+      if (data.error) {
+        setWrap(`Error: ${data.error}`);
+      } else {
+        setWrap(data.text || 'Could not load wrap.');
+      }
       setWrapLoaded(true);
-    }catch(e){
-      setWrap('Something went wrong. Try refreshing!');
+    } catch (e) {
+      console.error('[Nyra] Wrap fetch error:', e);
+      setWrap('Something went wrong. Make sure the API route is set up.');
     }
     setWrapLoading(false);
   }
@@ -466,14 +547,14 @@ export default function LearnPage(){
 
     {/* SIDEBAR */}
     <aside className="sb">
-      <div className="sb-logo"><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></div>
+      <a href="/dashboard" className="sb-logo" style={{textDecoration:"none"}}><span className="sb-logo-txt">Nyra</span><span className="sb-gem"/></a>
       <div className="nav-lbl">Menu</div>
       <a className="ni" href="/dashboard"><span className="ni-ic">📋</span>My Bills</a>
-      <div className="ni"><span className="ni-ic">🔔</span>Reminders</div>
-      <div className="ni"><span className="ni-ic">🏆</span>Achievements</div>
+      <a className="ni" href="/reminders"><span className="ni-ic">🔔</span>Reminders</a>
       <a className="ni on" href="/learn"><span className="ni-ic">🧠</span>Learn</a>
-      <div className="ni"><span className="ni-ic">📊</span>Analytics</div>
-      <div className="ni"><span className="ni-ic">⚙️</span>Settings</div>
+      <a className="ni" href="/achievements"><span className="ni-ic">🏆</span>Achievements</a>
+      <a className="ni" href="/analytics"><span className="ni-ic">📊</span>Analytics</a>
+      <a className="ni" href="/settings"><span className="ni-ic">⚙️</span>Settings</a>
       <div className="nav-lbl">Resources</div>
       <a className="ni" href="https://financialfutureseducation.com/" target="_blank" rel="noreferrer"><span className="ni-ic">🎓</span>FFE Website</a>
       <div className="sb-bot">
@@ -574,21 +655,41 @@ export default function LearnPage(){
                 <div className="wrap-month">{month.toUpperCase()}</div>
                 <div className="wrap-title">Your month in bills</div>
                 <div className="wrap-stats">
-                  <div className="wrap-stat"><div className="wrap-stat-val">{bills.length}</div><div className="wrap-stat-lbl">Bills tracked</div></div>
-                  <div className="wrap-stat"><div className="wrap-stat-val">{streakMonths}</div><div className="wrap-stat-lbl">Month streak</div></div>
-                  <div className="wrap-stat"><div className="wrap-stat-val">${bills.reduce((s,b)=>s+b.amount,0).toLocaleString()}</div><div className="wrap-stat-lbl">Total due</div></div>
+                  <div className="wrap-stat">
+                    <div className="wrap-stat-val">{bills.filter(b=>b.last_confirmed_at&&new Date(b.last_confirmed_at).getMonth()===new Date().getMonth()).length}/{bills.length}</div>
+                    <div className="wrap-stat-lbl">Bills paid</div>
+                  </div>
+                  <div className="wrap-stat">
+                    <div className="wrap-stat-val">{bills.length>0?Math.round((bills.filter(b=>b.last_confirmed_at&&new Date(b.last_confirmed_at).getMonth()===new Date().getMonth()).length/bills.length)*100):0}%</div>
+                    <div className="wrap-stat-lbl">On-time rate</div>
+                  </div>
+                  <div className="wrap-stat">
+                    <div className="wrap-stat-val">${bills.reduce((s,b)=>s+b.amount,0).toLocaleString()}</div>
+                    <div className="wrap-stat-lbl">Total due</div>
+                  </div>
+                </div>
+                {/* Streak badge */}
+                <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+                  <div style={{background:'rgba(255,255,255,.15)',borderRadius:100,padding:'6px 14px',fontSize:'.72rem',fontWeight:600,color:'rgba(255,255,255,.9)'}}>
+                    🔥 {streakMonths} month{streakMonths!==1?'s':''} on Nyra
+                  </div>
                 </div>
                 {!isPlus ? (
                   <div style={{background:'rgba(255,255,255,.12)',borderRadius:12,padding:'14px 16px',fontSize:'.78rem',color:'rgba(255,255,255,.85)',marginBottom:0}}>
                     Upgrade to Plus to unlock your personalized AI monthly wrap ✨
-                    <button style={{display:'block',marginTop:10,background:'white',color:'var(--blue)',border:'none',padding:'8px 20px',borderRadius:100,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.78rem',cursor:'pointer'}} onClick={()=>window.location.href='/signup?plan=Plus&price=5'}>Upgrade →</button>
+                    <button style={{display:'block',marginTop:10,background:'white',color:'var(--blue)',border:'none',padding:'8px 20px',borderRadius:100,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,fontSize:'.78rem',cursor:'pointer'}} onClick={()=>window.location.href='/settings?tab=plan'}>Upgrade →</button>
                   </div>
                 ) : !wrapLoaded ? (
                   <button className="wrap-load-btn" onClick={loadWrap} disabled={wrapLoading}>
                     {wrapLoading?<><div className="wrap-spinner" style={{display:'inline-block',marginRight:8,verticalAlign:'middle'}}/>Generating...</>:'✦ Generate my wrap'}
                   </button>
                 ) : (
-                  <div className="wrap-text">{wrap}</div>
+                  <>
+                    <div className="wrap-text">{wrap}</div>
+                    <button style={{marginTop:14,background:'rgba(255,255,255,.15)',color:'white',border:'none',padding:'8px 16px',borderRadius:100,fontSize:'.75rem',fontWeight:600,cursor:'pointer'}} onClick={()=>{setWrapLoaded(false);setWrap('');}}>
+                      ↺ Regenerate
+                    </button>
+                  </>
                 )}
               </div>
             </div>

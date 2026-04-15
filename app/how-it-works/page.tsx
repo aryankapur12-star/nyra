@@ -25,7 +25,15 @@ const FAQS = [
   },
   {
     q: 'What does the 20% to Financial Futures Education mean?',
-    a: '20% of all Nyra profits go directly to Financial Futures Education — delivering financial literacy sessions to youth in nonprofits and children\'s aid societies across Canada. Every subscription you pay contributes to that mission.',
+    a: 'Nyra is built by Financial Futures Education, a company that delivers financial literacy workshops to underserved youth in shelters, group homes, and community organizations across Canada. 20% of all Nyra profits directly fund these sessions — so every subscription helps a young person learn the money skills they need.',
+  },
+  {
+    q: 'How does the AI Coach work?',
+    a: 'Nyra\'s AI Coach learns from your payment patterns and provides personalized tips. It can spot unusual charges, predict cash flow crunches, suggest optimal payment timing, and answer any money questions you have — all in plain language.',
+  },
+  {
+    q: 'What\'s Money IQ and how do I improve it?',
+    a: 'Money IQ is your financial health score from 0–100 based on on-time payments, streak consistency, and good habits. Pay bills on time, maintain streaks, and complete weekly challenges to boost your score. It\'s a fun way to track your financial growth.',
   },
 ];
 
@@ -57,6 +65,7 @@ export default function HowItWorksPage() {
           --gold:#c39a35;--gold-l:#d4ae52;--gold-pale:rgba(195,154,53,0.09);
           --bg:#eef3fb;--text:#0c1524;--text2:#3a4f6a;--muted:#7a90aa;
           --border:rgba(33,119,209,0.1);--success:#22c55e;--warn:#f59e0b;
+          --purple:#8b5cf6;--purple-pale:rgba(139,92,246,0.08);
           --glass:rgba(255,255,255,0.60);--glass2:rgba(255,255,255,0.78);
           --gb:rgba(255,255,255,0.86);
           --gs:0 4px 24px rgba(33,119,209,0.08),0 1px 4px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.9);
@@ -70,6 +79,7 @@ export default function HowItWorksPage() {
         .b1{width:700px;height:700px;background:radial-gradient(circle,rgba(33,119,209,0.1) 0%,transparent 70%);top:-200px;left:-200px;animation:bd1 20s ease-in-out infinite;}
         .b2{width:500px;height:500px;background:radial-gradient(circle,rgba(195,154,53,0.08) 0%,transparent 70%);bottom:5%;right:-100px;animation:bd2 25s ease-in-out infinite;}
         .b3{width:400px;height:400px;background:radial-gradient(circle,rgba(33,119,209,0.06) 0%,transparent 70%);top:50%;left:40%;animation:bd3 17s ease-in-out infinite;}
+        .b4{width:350px;height:350px;background:radial-gradient(circle,rgba(139,92,246,0.06) 0%,transparent 70%);top:30%;right:10%;animation:bd1 22s ease-in-out infinite;}
         @keyframes bd1{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,60px)}}
         @keyframes bd2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-40px)}}
         @keyframes bd3{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px)}}
@@ -164,6 +174,124 @@ export default function HowItWorksPage() {
         .vp-msg{font-size:.72rem;font-weight:600;color:var(--text);}
         .vp-check{color:#22c55e;font-size:.95rem;font-weight:700;}
 
+        /* ═══════════════════════════════════════════════════════════════════════════
+           GAMIFICATION SECTION
+           ═══════════════════════════════════════════════════════════════════════════ */
+        .gamification-section{position:relative;z-index:1;padding:100px 52px;background:linear-gradient(180deg,var(--bg) 0%,rgba(139,92,246,0.03) 50%,var(--bg) 100%);}
+        .gam-inner{max-width:1100px;margin:0 auto;}
+        .gam-header{text-align:center;margin-bottom:60px;}
+        .gam-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+        
+        /* Gamification Cards */
+        .gam-card{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:24px;padding:28px;box-shadow:var(--gsl);position:relative;overflow:hidden;transition:transform .3s,box-shadow .3s;}
+        .gam-card:hover{transform:translateY(-4px);box-shadow:0 24px 80px rgba(33,119,209,0.18);}
+        .gam-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:24px 24px 0 0;}
+        .gam-card.streak::before{background:linear-gradient(90deg,#f59e0b,#ef4444,#f59e0b);}
+        .gam-card.moneyiq::before{background:linear-gradient(90deg,var(--blue),var(--purple),var(--blue));}
+        .gam-card.achieve::before{background:linear-gradient(90deg,var(--gold),#d4ae52,var(--gold));}
+        .gam-card.leader::before{background:linear-gradient(90deg,#22c55e,#10b981,#22c55e);}
+        
+        .gam-card-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin-bottom:18px;}
+        .gam-card.streak .gam-card-icon{background:rgba(245,158,11,.12);}
+        .gam-card.moneyiq .gam-card-icon{background:var(--purple-pale);}
+        .gam-card.achieve .gam-card-icon{background:var(--gold-pale);}
+        .gam-card.leader .gam-card-icon{background:rgba(34,197,94,.1);}
+        
+        .gam-card-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.15rem;color:var(--text);margin-bottom:8px;letter-spacing:-.02em;}
+        .gam-card-desc{font-size:.84rem;color:var(--text2);line-height:1.7;margin-bottom:18px;}
+        
+        /* Streak Visual */
+        .streak-visual{display:flex;align-items:center;gap:6px;}
+        .streak-day{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;transition:transform .2s;}
+        .streak-day.done{background:linear-gradient(135deg,#f59e0b,#ef4444);color:white;box-shadow:0 3px 12px rgba(245,158,11,.3);}
+        .streak-day.today{background:var(--blue);color:white;animation:streakPulse 2s ease infinite;box-shadow:0 3px 12px var(--blue-glow);}
+        .streak-day.future{background:rgba(33,119,209,.08);color:var(--muted);border:1.5px dashed rgba(33,119,209,.2);}
+        @keyframes streakPulse{0%,100%{box-shadow:0 3px 12px var(--blue-glow);}50%{box-shadow:0 3px 20px rgba(33,119,209,.4);}}
+        .streak-count{margin-left:auto;text-align:right;}
+        .streak-num{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:2rem;color:#f59e0b;letter-spacing:-.03em;line-height:1;}
+        .streak-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;}
+        
+        /* Money IQ Visual */
+        .moneyiq-visual{display:flex;align-items:center;gap:20px;}
+        .iq-circle{width:90px;height:90px;border-radius:50%;background:conic-gradient(var(--purple) 0deg,var(--purple) 266deg,rgba(139,92,246,.15) 266deg);display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 6px 24px rgba(139,92,246,.2);} /* 266deg = 74% of 360 */
+        .iq-circle::before{content:'';position:absolute;width:70px;height:70px;background:white;border-radius:50%;}
+        .iq-score{position:relative;z-index:1;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.5rem;color:var(--purple);letter-spacing:-.03em;}
+        .iq-breakdown{flex:1;}
+        .iq-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);}
+        .iq-item:last-child{border-bottom:none;}
+        .iq-item-name{font-size:.75rem;color:var(--text2);}
+        .iq-item-val{font-size:.75rem;font-weight:700;color:var(--success);}
+        
+        /* Achievements Visual */
+        .achieve-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+        .achieve-badge{background:rgba(255,255,255,.7);border:1px solid var(--gb);border-radius:12px;padding:12px 8px;text-align:center;transition:transform .2s,box-shadow .2s;}
+        .achieve-badge:hover{transform:scale(1.05);box-shadow:var(--gs);}
+        .achieve-badge.locked{opacity:.4;filter:grayscale(1);}
+        .achieve-icon{font-size:1.4rem;margin-bottom:4px;}
+        .achieve-name{font-size:.6rem;font-weight:600;color:var(--text);line-height:1.3;}
+        
+        /* Leaderboard Visual */
+        .leader-list{display:flex;flex-direction:column;gap:8px;}
+        .leader-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.6);border:1px solid var(--gb);border-radius:12px;padding:10px 14px;}
+        .leader-row.you{background:linear-gradient(135deg,rgba(34,197,94,.08),rgba(34,197,94,.02));border-color:rgba(34,197,94,.2);}
+        .leader-rank{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:.9rem;color:var(--muted);width:24px;}
+        .leader-row:nth-child(1) .leader-rank{color:#fbbf24;}
+        .leader-row:nth-child(2) .leader-rank{color:#94a3b8;}
+        .leader-row:nth-child(3) .leader-rank{color:#d97706;}
+        .leader-avatar{width:32px;height:32px;border-radius:50%;background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--blue);}
+        .leader-name{flex:1;font-size:.8rem;font-weight:600;color:var(--text);}
+        .leader-score{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.85rem;color:var(--purple);}
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           AI FEATURES SECTION
+           ═══════════════════════════════════════════════════════════════════════════ */
+        .ai-section{position:relative;z-index:1;padding:100px 52px;background:linear-gradient(180deg,var(--bg) 0%,rgba(33,119,209,0.04) 100%);}
+        .ai-inner{max-width:1100px;margin:0 auto;}
+        .ai-header{text-align:center;margin-bottom:60px;}
+        .ai-header .section-eyebrow{justify-content:center;}
+        .ai-header .section-eyebrow::before{display:none;}
+        
+        .ai-bento{display:grid;grid-template-columns:1.2fr 0.8fr;grid-template-rows:auto auto;gap:20px;}
+        
+        /* AI Coach Card (large) */
+        .ai-coach-card{grid-row:span 2;background:linear-gradient(145deg,rgba(33,119,209,0.06),rgba(195,154,53,0.03));backdrop-filter:blur(22px);border:1px solid var(--gb);border-radius:28px;padding:32px;box-shadow:var(--gsl);position:relative;overflow:hidden;}
+        .ai-coach-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--blue));}
+        .ai-coach-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
+        .ai-coach-avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 6px 20px var(--blue-glow);}
+        .ai-coach-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;color:var(--text);letter-spacing:-.02em;}
+        .ai-coach-sub{font-size:.78rem;color:var(--muted);}
+        .ai-coach-badge{display:inline-flex;align-items:center;gap:5px;background:var(--gold-pale);border:1px solid rgba(195,154,53,.2);border-radius:100px;padding:4px 12px;font-size:.65rem;font-weight:600;color:var(--gold);margin-top:4px;}
+        
+        .ai-chat{margin-bottom:20px;}
+        .ai-msg{margin-bottom:12px;max-width:85%;}
+        .ai-msg.user{margin-left:auto;text-align:right;}
+        .ai-msg-bubble{display:inline-block;padding:12px 16px;border-radius:16px;font-size:.82rem;line-height:1.6;}
+        .ai-msg.bot .ai-msg-bubble{background:white;border:1px solid var(--gb);color:var(--text);border-radius:16px 16px 16px 4px;box-shadow:var(--gs);}
+        .ai-msg.user .ai-msg-bubble{background:linear-gradient(135deg,var(--blue),var(--blue-d));color:white;border-radius:16px 16px 4px 16px;box-shadow:0 4px 14px var(--blue-glow);}
+        .ai-msg-time{font-size:.6rem;color:var(--muted);margin-top:4px;}
+        
+        .ai-input-mock{display:flex;align-items:center;gap:10px;background:white;border:1.5px solid rgba(33,119,209,.15);border-radius:14px;padding:12px 16px;}
+        .ai-input-mock input{flex:1;border:none;outline:none;font-size:.85rem;color:var(--text);background:transparent;}
+        .ai-input-mock input::placeholder{color:var(--muted);}
+        .ai-send-btn{width:36px;height:36px;border-radius:10px;background:var(--blue);border:none;color:white;font-size:.9rem;cursor:pointer;box-shadow:0 3px 10px var(--blue-glow);}
+        
+        /* Smaller AI Feature Cards */
+        .ai-feature-card{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:20px;padding:24px;box-shadow:var(--gs);transition:transform .2s;}
+        .ai-feature-card:hover{transform:translateY(-3px);}
+        .ai-feature-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:14px;}
+        .ai-feature-card.insights .ai-feature-icon{background:var(--purple-pale);}
+        .ai-feature-card.payment .ai-feature-icon{background:rgba(34,197,94,.1);}
+        .ai-feature-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1rem;color:var(--text);margin-bottom:6px;}
+        .ai-feature-desc{font-size:.8rem;color:var(--text2);line-height:1.7;margin-bottom:14px;}
+        
+        .insight-tags{display:flex;flex-wrap:wrap;gap:6px;}
+        .insight-tag{font-size:.65rem;font-weight:600;padding:4px 10px;border-radius:100px;background:var(--purple-pale);color:var(--purple);border:1px solid rgba(139,92,246,.15);}
+        
+        .payment-alert{display:flex;align-items:center;gap:10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:10px 12px;}
+        .payment-alert-icon{font-size:1rem;}
+        .payment-alert-text{font-size:.72rem;color:var(--text2);line-height:1.5;}
+        .payment-alert-text strong{color:var(--warn);}
+
         /* DASHBOARD PREVIEW */
         .dash-preview-section{position:relative;z-index:1;padding:80px 52px;background:linear-gradient(180deg,rgba(33,119,209,.03) 0%,rgba(195,154,53,.02) 100%);border-top:1px solid var(--border);}
         .dp-inner{max-width:1020px;margin:0 auto;}
@@ -231,13 +359,31 @@ export default function HowItWorksPage() {
         .reveal.vis,.reveal-s.vis{opacity:1;transform:none;}
         .d1{transition-delay:.1s;}.d2{transition-delay:.2s;}.d3{transition-delay:.3s;}.d4{transition-delay:.4s;}
 
-        @media(max-width:900px){.dm-grid{grid-template-columns:1fr;}.dm-stats{grid-template-columns:repeat(2,1fr);}.steps-section,.dash-preview-section,.faq-section{padding:60px 24px;}.cta-strip{margin:0 20px 60px;padding:36px 24px;}}
-        @media(max-width:640px){.hiw-nav{width:calc(100% - 28px);padding:0 14px;}.nl{display:none;}.hiw-hero{padding:100px 20px 60px;}.hiw-footer{padding:24px 20px;flex-direction:column;text-align:center;}.step-block{grid-template-columns:56px 1fr;gap:0 16px;}.vd-row{grid-template-columns:repeat(2,1fr);}.dm-stats{grid-template-columns:repeat(2,1fr);}}
+        @media(max-width:900px){
+          .dm-grid{grid-template-columns:1fr;}
+          .dm-stats{grid-template-columns:repeat(2,1fr);}
+          .steps-section,.dash-preview-section,.faq-section,.gamification-section,.ai-section{padding:60px 24px;}
+          .cta-strip{margin:0 20px 60px;padding:36px 24px;}
+          .gam-grid{grid-template-columns:1fr;}
+          .ai-bento{grid-template-columns:1fr;grid-template-rows:auto;}
+          .ai-coach-card{grid-row:auto;}
+        }
+        @media(max-width:640px){
+          .hiw-nav{width:calc(100% - 28px);padding:0 14px;}
+          .nl{display:none;}
+          .hiw-hero{padding:100px 20px 60px;}
+          .hiw-footer{padding:24px 20px;flex-direction:column;text-align:center;}
+          .step-block{grid-template-columns:56px 1fr;gap:0 16px;}
+          .vd-row{grid-template-columns:repeat(2,1fr);}
+          .dm-stats{grid-template-columns:repeat(2,1fr);}
+          .achieve-grid{grid-template-columns:repeat(2,1fr);}
+        }
       `}</style>
 
       <div className="bg-blob b1" />
       <div className="bg-blob b2" />
       <div className="bg-blob b3" />
+      <div className="bg-blob b4" />
 
       {/* NAV */}
       <nav className="hiw-nav">
@@ -381,6 +527,180 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          GAMIFICATION SECTION
+          ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="gamification-section" id="gamification">
+        <div className="gam-inner">
+          <div className="gam-header">
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 50)} style={{ justifyContent: 'center' }}>Level up your finances</div>
+            <h2 className="section-h reveal d1" ref={el => addReveal(el, 51)} style={{ textAlign: 'center' }}>Make good habits<br />actually rewarding.</h2>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 52)} style={{ textAlign: 'center', margin: '0 auto' }}>Nyra turns financial responsibility into something fun. Earn streaks, boost your Money IQ, unlock achievements, and climb the leaderboard.</p>
+          </div>
+
+          <div className="gam-grid">
+            {/* Streak Card */}
+            <div className="gam-card streak reveal d1" ref={el => addReveal(el, 53)}>
+              <div className="gam-card-icon">🔥</div>
+              <div className="gam-card-title">Payment Streaks</div>
+              <div className="gam-card-desc">Pay on time, keep your streak alive. Miss a payment? It resets. How long can you go?</div>
+              <div className="streak-visual">
+                <div className="streak-day done">M</div>
+                <div className="streak-day done">T</div>
+                <div className="streak-day done">W</div>
+                <div className="streak-day done">T</div>
+                <div className="streak-day today">F</div>
+                <div className="streak-day future">S</div>
+                <div className="streak-day future">S</div>
+                <div className="streak-count">
+                  <div className="streak-num">12</div>
+                  <div className="streak-label">day streak</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Money IQ Card */}
+            <div className="gam-card moneyiq reveal d2" ref={el => addReveal(el, 54)}>
+              <div className="gam-card-icon">🧠</div>
+              <div className="gam-card-title">Money IQ Score</div>
+              <div className="gam-card-desc">Your financial health score. Pay on time and make smart decisions to boost it.</div>
+              <div className="moneyiq-visual">
+                <div className="iq-circle">
+                  <div className="iq-score">74</div>
+                </div>
+                <div className="iq-breakdown">
+                  <div className="iq-item"><span className="iq-item-name">On-time payments</span><span className="iq-item-val">+45</span></div>
+                  <div className="iq-item"><span className="iq-item-name">Streak bonus</span><span className="iq-item-val">+12</span></div>
+                  <div className="iq-item"><span className="iq-item-name">Challenges completed</span><span className="iq-item-val">+8</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Achievements Card */}
+            <div className="gam-card achieve reveal d3" ref={el => addReveal(el, 55)}>
+              <div className="gam-card-icon">🏆</div>
+              <div className="gam-card-title">Achievements</div>
+              <div className="gam-card-desc">Unlock badges as you hit milestones. Collect them all and show off your progress.</div>
+              <div className="achieve-grid">
+                <div className="achieve-badge"><div className="achieve-icon">🌟</div><div className="achieve-name">First Bill</div></div>
+                <div className="achieve-badge"><div className="achieve-icon">🔥</div><div className="achieve-name">7-Day Streak</div></div>
+                <div className="achieve-badge"><div className="achieve-icon">💯</div><div className="achieve-name">Perfect Month</div></div>
+                <div className="achieve-badge"><div className="achieve-icon">🚀</div><div className="achieve-name">Power User</div></div>
+                <div className="achieve-badge"><div className="achieve-icon">🎯</div><div className="achieve-name">10 On Time</div></div>
+                <div className="achieve-badge locked"><div className="achieve-icon">💎</div><div className="achieve-name">IQ 80+</div></div>
+                <div className="achieve-badge locked"><div className="achieve-icon">👑</div><div className="achieve-name">30-Day Streak</div></div>
+                <div className="achieve-badge locked"><div className="achieve-icon">⚡</div><div className="achieve-name">Early Bird</div></div>
+              </div>
+            </div>
+
+            {/* Leaderboard Card */}
+            <div className="gam-card leader reveal d4" ref={el => addReveal(el, 56)}>
+              <div className="gam-card-icon">📊</div>
+              <div className="gam-card-title">Weekly Leaderboard</div>
+              <div className="gam-card-desc">Compete with other Nyra users. Top performers get featured and earn bonus IQ points.</div>
+              <div className="leader-list">
+                <div className="leader-row">
+                  <div className="leader-rank">1</div>
+                  <div className="leader-avatar">SM</div>
+                  <div className="leader-name">Sarah M.</div>
+                  <div className="leader-score">89</div>
+                </div>
+                <div className="leader-row">
+                  <div className="leader-rank">2</div>
+                  <div className="leader-avatar">JK</div>
+                  <div className="leader-name">James K.</div>
+                  <div className="leader-score">84</div>
+                </div>
+                <div className="leader-row you">
+                  <div className="leader-rank">3</div>
+                  <div className="leader-avatar" style={{ background: 'rgba(34,197,94,.15)', color: '#22c55e' }}>You</div>
+                  <div className="leader-name">You 🎉</div>
+                  <div className="leader-score">74</div>
+                </div>
+                <div className="leader-row">
+                  <div className="leader-rank">4</div>
+                  <div className="leader-avatar">AT</div>
+                  <div className="leader-name">Alex T.</div>
+                  <div className="leader-score">71</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════
+          AI FEATURES SECTION
+          ═══════════════════════════════════════════════════════════════════════════ */}
+      <section className="ai-section" id="ai-features">
+        <div className="ai-inner">
+          <div className="ai-header">
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 60)}>Powered by AI</div>
+            <h2 className="section-h reveal d1" ref={el => addReveal(el, 61)}>Your personal<br />money advisor.</h2>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 62)} style={{ textAlign: 'center', margin: '0 auto' }}>Nyra&apos;s AI learns your patterns and provides intelligent insights to help you make better financial decisions.</p>
+          </div>
+
+          <div className="ai-bento">
+            {/* AI Coach Card (Large) */}
+            <div className="ai-coach-card reveal d1" ref={el => addReveal(el, 63)}>
+              <div className="ai-coach-header">
+                <div className="ai-coach-avatar">✦</div>
+                <div>
+                  <div className="ai-coach-title">Nyra AI Coach</div>
+                  <div className="ai-coach-sub">Your 24/7 financial assistant</div>
+                  <div className="ai-coach-badge">✦ Powered by Claude</div>
+                </div>
+              </div>
+              
+              <div className="ai-chat">
+                <div className="ai-msg user">
+                  <div className="ai-msg-bubble">My Netflix went up to $22 this month — is that normal?</div>
+                  <div className="ai-msg-time">Just now</div>
+                </div>
+                <div className="ai-msg bot">
+                  <div className="ai-msg-bubble">
+                    I noticed that too! Your Netflix increased from $18 to $22 — a 22% jump. This matches Netflix&apos;s recent price increase announced last month. 📈<br /><br />
+                    <strong>Tip:</strong> You could switch to the Standard plan to save $4/month, or consider sharing with family to split costs. Want me to track this for you?
+                  </div>
+                  <div className="ai-msg-time">Just now</div>
+                </div>
+              </div>
+              
+              <div className="ai-input-mock">
+                <input type="text" placeholder="Ask Nyra anything about your bills..." readOnly />
+                <button className="ai-send-btn">→</button>
+              </div>
+            </div>
+
+            {/* Smart Insights Card */}
+            <div className="ai-feature-card insights reveal d2" ref={el => addReveal(el, 64)}>
+              <div className="ai-feature-icon">📊</div>
+              <div className="ai-feature-title">Smart Insights</div>
+              <div className="ai-feature-desc">Weekly AI-generated reports showing spending trends, savings opportunities, and personalized tips.</div>
+              <div className="insight-tags">
+                <span className="insight-tag">Weekly wrap-up</span>
+                <span className="insight-tag">Spending trends</span>
+                <span className="insight-tag">Savings tips</span>
+                <span className="insight-tag">Bill comparison</span>
+              </div>
+            </div>
+
+            {/* Payment Intelligence Card */}
+            <div className="ai-feature-card payment reveal d3" ref={el => addReveal(el, 65)}>
+              <div className="ai-feature-icon">🔍</div>
+              <div className="ai-feature-title">Payment Intelligence</div>
+              <div className="ai-feature-desc">Automatically detects unusual charges and alerts you before problems become expensive.</div>
+              <div className="payment-alert">
+                <div className="payment-alert-icon">⚠️</div>
+                <div className="payment-alert-text">
+                  <strong>Unusual charge detected:</strong> Your Spotify was $45 this month vs. usual $15. Looks like an annual subscription renewal.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ANNOTATED DASHBOARD PREVIEW */}
       <section className="dash-preview-section" id="dashboard-preview">
         <div className="dp-inner">
@@ -458,11 +778,11 @@ export default function HowItWorksPage() {
       </section>
 
       {/* CTA STRIP */}
-      <div className="cta-strip reveal" ref={el => addReveal(el, 20)}>
+      <div className="cta-strip reveal" ref={el => addReveal(el, 30)}>
         <div className="cta-strip-inner">
           <div className="cta-strip-eyebrow">Ready to get started?</div>
           <h2 className="cta-strip-h">Three minutes to<br />never miss a bill again.</h2>
-          <p className="cta-strip-p">Join Canadians who&apos;ve stopped stressing about due dates. Plans from $3/month — and 20% goes to Financial Futures Education.</p>
+          <p className="cta-strip-p">Join Canadians who&apos;ve stopped stressing about due dates. Plans from $3/month — and 20% funds financial literacy for youth who need it most.</p>
           <div className="cta-strip-btns">
             <a href="/#pricing" className="strip-btn-p">Get started today →</a>
             <a href="/" className="strip-btn-g">← Back to Nyra</a>
