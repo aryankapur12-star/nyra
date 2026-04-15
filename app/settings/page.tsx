@@ -129,8 +129,7 @@ export default function SettingsPage(){
               first_name: first || null,
               middle_name: middle || null,
               last_name: last || null
-            })
-            .eq('id', user.id);
+            }).eq('id', user!.id);
           }
         }
         
