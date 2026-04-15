@@ -121,11 +121,16 @@ export default function SettingsPage(){
           
           // Save parsed names to database so dashboard can use first_name
           if(first){
-            await supabase.from('profiles').update({
-              first_name:first,
-              middle_name:middle||null,
-              last_name:last||null
-            }).eq('id',user.id);
+           if (!user) return;
+
+          await supabase
+            .from('profiles')
+            .update({
+              first_name: first || null,
+              middle_name: middle || null,
+              last_name: last || null
+            })
+            .eq('id', user.id);
           }
         }
         
