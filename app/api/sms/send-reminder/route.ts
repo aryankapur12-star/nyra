@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      messageId: result.messageId,
+      sid: result.sid,
       message: 'Reminder sent successfully'
     });
 
