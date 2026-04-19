@@ -1048,9 +1048,9 @@ export default function SettingsPage(){
                           <button 
                             className="phone-verify-submit" 
                             onClick={submitVerifyCode}
-                            disabled={verifyCode.length!==6||verifyStep==='verifying'}
+                            disabled={verifyCode.length!==6||(verifyStep as string)==='verifying'}
                           >
-                            {verifyStep==='verifying'?'Verifying...':'Verify'}
+                            {(verifyStep as string)==='verifying'?'Verifying...':'Verify'}
                           </button>
                         </div>
                         <button className="phone-resend" onClick={sendVerificationCode}>

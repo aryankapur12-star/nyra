@@ -143,31 +143,49 @@ function SignupInner() {
     setLoading(true);
     setVerifyError('');
     
-    // Save phone to profile
     const fullPhone = '+1' + form.phone.replace(/\D/g, '');
-    await supabase.from('profiles').update({ phone_number: fullPhone }).eq('id', userId);
     
-    // In production: call Twilio API here
-    // For now: simulate sending
-    await new Promise(r => setTimeout(r, 1000));
-    setCodeSent(true);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/sms/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send code');
+      setCodeSent(true);
+    } catch (err: any) {
+      setVerifyError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // ── Verify phone code ──────────────────────────────────────────────────────
   async function verifyPhone() {
     if (verifyCode.length !== 6) {
       setVerifyError('Please enter the 6-digit code');
       return;
     }
     setLoading(true);
+    setVerifyError('');
     
-    // In production: verify with Twilio
-    // For now: accept any 6 digits
-    await new Promise(r => setTimeout(r, 800));
-    await supabase.from('profiles').update({ phone_verified: true }).eq('id', userId);
+    const fullPhone = '+1' + form.phone.replace(/\D/g, '');
     
-    setLoading(false);
-    goStep(4);
+    try {
+      const res = await fetch('/api/sms/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone, code: verifyCode, userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid code');
+      goStep(4);
+    } catch (err: any) {
+      setVerifyError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ── Save profile preferences (step 4 -> 5) ─────────────────────────────────
@@ -532,7 +550,7 @@ function SignupInner() {
                     <button className="btn btn-primary" onClick={verifyPhone} disabled={verifyCode.length !== 6 || loading}>
                       {loading ? 'Verifying...' : 'Verify & continue →'}
                     </button>
-                    <div className="resend-link" onClick={() => { setCodeSent(false); setVerifyCode(''); }}>
+                    <div className="resend-link" onClick={() => { setCodeSent(false); setVerifyCode(''); setVerifyError(''); }}>
                       Didn't get it? Send again
                     </div>
                   </>

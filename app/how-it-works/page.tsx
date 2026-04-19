@@ -73,7 +73,10 @@ export default function HowItWorksPage() {
         }
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         html{scroll-behavior:smooth;}
-        body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6;}
+        body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.75;font-size:18px;}
+        
+        /* Nyra brand highlight */
+        .nyra-brand{color:var(--blue);font-weight:700;}
 
         .bg-blob{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;}
         .b1{width:700px;height:700px;background:radial-gradient(circle,rgba(33,119,209,0.1) 0%,transparent 70%);top:-200px;left:-200px;animation:bd1 20s ease-in-out infinite;}
@@ -87,52 +90,52 @@ export default function HowItWorksPage() {
         /* NAV */
         .hiw-nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:200;
           display:flex;align-items:center;justify-content:space-between;
-          padding:0 10px 0 20px;height:52px;width:calc(100% - 56px);max-width:1000px;
+          padding:0 10px 0 20px;height:56px;width:calc(100% - 56px);max-width:1040px;
           background:var(--glass);backdrop-filter:blur(28px) saturate(2);
           border:1px solid var(--gb);border-radius:100px;box-shadow:var(--gs);}
-        .logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
-        .logo-gem{display:inline-block;width:5px;height:5px;background:var(--gold);border-radius:50%;margin-left:2px;margin-bottom:5px;box-shadow:0 0 8px var(--gold);vertical-align:middle;animation:gp 3s ease infinite;}
+        .logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
+        .logo-gem{display:inline-block;width:6px;height:6px;background:var(--gold);border-radius:50%;margin-left:2px;margin-bottom:5px;box-shadow:0 0 8px var(--gold);vertical-align:middle;animation:gp 3s ease infinite;}
         @keyframes gp{0%,100%{box-shadow:0 0 6px var(--gold);}50%{box-shadow:0 0 16px var(--gold),0 0 28px rgba(195,154,53,.3);}}
-        .nav-links{display:flex;align-items:center;gap:4px;}
-        .nl{font-size:.8rem;font-weight:500;color:var(--text2);text-decoration:none;padding:7px 14px;border-radius:100px;transition:background .2s,color .2s;}
+        .nav-links{display:flex;align-items:center;gap:6px;}
+        .nl{font-size:1rem;font-weight:500;color:var(--text2);text-decoration:none;padding:8px 16px;border-radius:100px;transition:background .2s,color .2s;}
         .nl:hover{background:var(--blue-pale);color:var(--blue);}
         .nl.active{color:var(--blue);background:var(--blue-pale);font-weight:600;}
-        .nbtn{background:var(--blue);color:white;padding:8px 20px;border-radius:100px;font-size:.8rem;font-weight:600;text-decoration:none;box-shadow:0 4px 14px var(--blue-glow);transition:background .2s,transform .15s;}
+        .nbtn{background:var(--blue);color:white;padding:12px 28px;border-radius:100px;font-size:1rem;font-weight:600;text-decoration:none;box-shadow:0 4px 14px var(--blue-glow);transition:background .2s,transform .15s;}
         .nbtn:hover{background:var(--blue-d);transform:translateY(-1px);}
-        .ffe-link{font-size:.75rem;font-weight:500;color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:rgba(255,255,255,.4);transition:all .2s;}
+        .ffe-link{font-size:0.85rem;font-weight:500;color:var(--text2);text-decoration:none;padding:8px 16px;border-radius:100px;border:1px solid var(--border);background:rgba(255,255,255,.4);transition:all .2s;}
         .ffe-link:hover{color:var(--blue);background:var(--blue-pale);}
 
         /* HERO */
         .hiw-hero{min-height:60vh;display:flex;align-items:center;justify-content:center;padding:130px 52px 80px;text-align:center;position:relative;overflow:hidden;z-index:1;}
-        .hiw-hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(33,119,209,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(33,119,209,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%);}
-        .hiw-hero-inner{position:relative;z-index:1;max-width:700px;}
-        .hiw-pill{display:inline-flex;align-items:center;gap:8px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--gb);border-radius:100px;padding:6px 18px 6px 12px;font-size:.7rem;font-weight:600;color:var(--blue);letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--gs);margin-bottom:28px;opacity:0;animation:fup .6s ease .1s forwards;}
-        .pill-dot{width:5px;height:5px;background:var(--gold);border-radius:50%;box-shadow:0 0 8px var(--gold);animation:gp 2.5s ease infinite;}
-        .hiw-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(2.4rem,5vw,4rem);letter-spacing:-.04em;line-height:1.06;color:var(--text);margin-bottom:16px;opacity:0;animation:fup .6s ease .2s forwards;}
+        .hiw-hero-grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(33,119,209,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(33,119,209,.04) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 100%);}
+        .hiw-hero-inner{position:relative;z-index:1;max-width:760px;}
+        .hiw-pill{display:inline-flex;align-items:center;gap:10px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--gb);border-radius:100px;padding:10px 26px 10px 18px;font-size:0.9rem;font-weight:600;color:var(--blue);letter-spacing:.04em;text-transform:uppercase;box-shadow:var(--gs);margin-bottom:32px;opacity:0;animation:fup .6s ease .1s forwards;}
+        .pill-dot{width:8px;height:8px;background:var(--gold);border-radius:50%;box-shadow:0 0 8px var(--gold);animation:gp 2.5s ease infinite;}
+        .hiw-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(2.6rem,5vw,4.2rem);letter-spacing:-.04em;line-height:1.06;color:var(--text);margin-bottom:20px;opacity:0;animation:fup .6s ease .2s forwards;}
         .hiw-h span{background:linear-gradient(135deg,var(--blue),var(--blue-m),var(--blue-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-        .hiw-sub{font-size:.95rem;color:var(--text2);line-height:1.8;max-width:480px;margin:0 auto 36px;opacity:0;animation:fup .6s ease .3s forwards;}
-        .hiw-ctas{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;opacity:0;animation:fup .6s ease .4s forwards;}
-        .cta-p{display:inline-flex;align-items:center;gap:8px;background:var(--blue);color:white;padding:13px 30px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;text-decoration:none;box-shadow:0 6px 26px var(--blue-glow);transition:background .2s,transform .15s;}
+        .hiw-sub{font-size:1.15rem;color:var(--text2);line-height:1.8;max-width:540px;margin:0 auto 40px;opacity:0;animation:fup .6s ease .3s forwards;}
+        .hiw-ctas{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;opacity:0;animation:fup .6s ease .4s forwards;}
+        .cta-p{display:inline-flex;align-items:center;gap:10px;background:var(--blue);color:white;padding:18px 38px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:700;text-decoration:none;box-shadow:0 6px 28px var(--blue-glow);transition:background .2s,transform .15s;}
         .cta-p:hover{background:var(--blue-d);transform:translateY(-2px);}
-        .cta-g{display:inline-flex;align-items:center;gap:7px;color:var(--text2);font-size:.88rem;font-weight:500;text-decoration:none;padding:13px 22px;border-radius:100px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--gb);box-shadow:var(--gs);transition:color .2s,background .2s;}
-        .cta-g:hover{color:var(--blue);background:var(--glass2);}
+        .cta-g{display:inline-flex;align-items:center;gap:8px;color:var(--text2);font-size:1.05rem;font-weight:500;text-decoration:none;padding:18px 28px;border-radius:100px;background:var(--glass);backdrop-filter:blur(16px);border:2px solid rgba(33,119,209,.22);box-shadow:var(--gs);transition:color .2s,background .2s;}
+        .cta-g:hover{color:var(--blue);background:var(--blue-pale);}
         @keyframes fup{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
         /* STEPS SECTION */
-        .steps-section{position:relative;z-index:1;padding:80px 52px;max-width:1060px;margin:0 auto;}
-        .section-eyebrow{display:flex;align-items:center;gap:12px;font-size:.63rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;}
-        .section-eyebrow::before{content:'';width:18px;height:1.5px;background:var(--gold);opacity:.5;}
-        .section-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(1.9rem,3vw,2.8rem);letter-spacing:-.03em;color:var(--text);margin-bottom:12px;line-height:1.1;}
-        .section-p{font-size:.88rem;color:var(--text2);max-width:440px;line-height:1.85;margin-bottom:60px;}
+        .steps-section{position:relative;z-index:1;padding:100px 52px;max-width:1100px;margin:0 auto;}
+        .section-eyebrow{display:flex;align-items:center;gap:12px;font-size:.78rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:22px;}
+        .section-eyebrow::before{content:'';width:22px;height:2px;background:var(--gold);opacity:.5;}
+        .section-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(2.2rem,3.2vw,3rem);letter-spacing:-.03em;color:var(--text);margin-bottom:16px;line-height:1.12;}
+        .section-p{font-size:1.08rem;color:var(--text2);max-width:480px;line-height:1.85;margin-bottom:60px;}
         .steps-timeline{display:flex;flex-direction:column;}
-        .step-block{display:grid;grid-template-columns:80px 1fr;gap:0 32px;position:relative;}
+        .step-block{display:grid;grid-template-columns:80px 1fr;gap:0 36px;position:relative;}
         .step-block:not(:last-child)::before{content:'';position:absolute;left:39px;top:80px;bottom:-20px;width:2px;background:linear-gradient(to bottom,var(--blue),rgba(33,119,209,.1));z-index:0;}
         .step-num-col{display:flex;flex-direction:column;align-items:center;padding-top:10px;}
-        .step-circle{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;color:white;box-shadow:0 6px 20px var(--blue-glow);position:relative;z-index:1;flex-shrink:0;}
-        .step-content{padding:0 0 56px;}
-        .step-eyebrow{font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;margin-top:14px;}
-        .step-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;letter-spacing:-.03em;color:var(--text);margin-bottom:10px;}
-        .step-p{font-size:.88rem;color:var(--text2);line-height:1.85;margin-bottom:20px;max-width:520px;}
+        .step-circle{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.2rem;color:white;box-shadow:0 6px 20px var(--blue-glow);position:relative;z-index:1;flex-shrink:0;}
+        .step-content{padding:0 0 60px;}
+        .step-eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;margin-top:14px;}
+        .step-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(1.6rem,2.5vw,2rem);letter-spacing:-.03em;color:var(--text);margin-bottom:14px;}
+        .step-p{font-size:1.08rem;color:var(--text2);line-height:1.85;margin-bottom:24px;max-width:540px;}
         .step-visual{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:20px;padding:22px 24px;box-shadow:var(--gsl);max-width:540px;position:relative;overflow:hidden;}
         .step-visual::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--blue),var(--gold),transparent);}
 
@@ -197,8 +200,8 @@ export default function HowItWorksPage() {
         .gam-card.achieve .gam-card-icon{background:var(--gold-pale);}
         .gam-card.leader .gam-card-icon{background:rgba(34,197,94,.1);}
         
-        .gam-card-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.15rem;color:var(--text);margin-bottom:8px;letter-spacing:-.02em;}
-        .gam-card-desc{font-size:.84rem;color:var(--text2);line-height:1.7;margin-bottom:18px;}
+        .gam-card-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.25rem;color:var(--text);margin-bottom:10px;letter-spacing:-.02em;}
+        .gam-card-desc{font-size:1.02rem;color:var(--text2);line-height:1.75;margin-bottom:20px;}
         
         /* Streak Visual */
         .streak-visual{display:flex;align-items:center;gap:6px;}
@@ -258,9 +261,9 @@ export default function HowItWorksPage() {
         .ai-coach-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--blue),var(--gold),var(--blue));}
         .ai-coach-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
         .ai-coach-avatar{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--blue),var(--blue-m));display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 6px 20px var(--blue-glow);}
-        .ai-coach-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;color:var(--text);letter-spacing:-.02em;}
-        .ai-coach-sub{font-size:.78rem;color:var(--muted);}
-        .ai-coach-badge{display:inline-flex;align-items:center;gap:5px;background:var(--gold-pale);border:1px solid rgba(195,154,53,.2);border-radius:100px;padding:4px 12px;font-size:.65rem;font-weight:600;color:var(--gold);margin-top:4px;}
+        .ai-coach-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;color:var(--text);letter-spacing:-.02em;}
+        .ai-coach-sub{font-size:.9rem;color:var(--muted);}
+        .ai-coach-badge{display:inline-flex;align-items:center;gap:5px;background:var(--gold-pale);border:1px solid rgba(195,154,53,.2);border-radius:100px;padding:5px 14px;font-size:.72rem;font-weight:600;color:var(--gold);margin-top:4px;}
         
         .ai-chat{margin-bottom:20px;}
         .ai-msg{margin-bottom:12px;max-width:85%;}
@@ -281,8 +284,8 @@ export default function HowItWorksPage() {
         .ai-feature-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:14px;}
         .ai-feature-card.insights .ai-feature-icon{background:var(--purple-pale);}
         .ai-feature-card.payment .ai-feature-icon{background:rgba(34,197,94,.1);}
-        .ai-feature-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1rem;color:var(--text);margin-bottom:6px;}
-        .ai-feature-desc{font-size:.8rem;color:var(--text2);line-height:1.7;margin-bottom:14px;}
+        .ai-feature-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.1rem;color:var(--text);margin-bottom:8px;}
+        .ai-feature-desc{font-size:1rem;color:var(--text2);line-height:1.75;margin-bottom:16px;}
         
         .insight-tags{display:flex;flex-wrap:wrap;gap:6px;}
         .insight-tag{font-size:.65rem;font-weight:600;padding:4px 10px;border-radius:100px;background:var(--purple-pale);color:var(--purple);border:1px solid rgba(139,92,246,.15);}
@@ -320,38 +323,38 @@ export default function HowItWorksPage() {
         .ann-card-sub{font-size:.62rem;color:var(--muted);}
 
         /* FAQ */
-        .faq-section{position:relative;z-index:1;padding:80px 52px;max-width:800px;margin:0 auto;}
-        .faq-list{margin-top:48px;display:flex;flex-direction:column;gap:10px;}
-        .faq-item{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:18px;overflow:hidden;box-shadow:var(--gs);transition:box-shadow .2s;}
+        .faq-section{position:relative;z-index:1;padding:100px 52px;max-width:860px;margin:0 auto;}
+        .faq-list{margin-top:52px;display:flex;flex-direction:column;gap:12px;}
+        .faq-item{background:var(--glass);backdrop-filter:blur(22px) saturate(2);border:1px solid var(--gb);border-radius:20px;overflow:hidden;box-shadow:var(--gs);transition:box-shadow .2s;}
         .faq-item:hover{box-shadow:var(--gsl);}
-        .faq-q{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;cursor:pointer;gap:16px;}
-        .faq-q-text{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.92rem;color:var(--text);}
-        .faq-icon{width:28px;height:28px;border-radius:50%;background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--blue);flex-shrink:0;font-weight:700;transition:transform .3s,background .2s;}
+        .faq-q{display:flex;align-items:center;justify-content:space-between;padding:22px 26px;cursor:pointer;gap:18px;}
+        .faq-q-text{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.05rem;color:var(--text);}
+        .faq-icon{width:32px;height:32px;border-radius:50%;background:var(--blue-pale);border:1px solid rgba(33,119,209,.15);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--blue);flex-shrink:0;font-weight:700;transition:transform .3s,background .2s;}
         .faq-icon.open{transform:rotate(45deg);background:var(--blue);color:white;}
-        .faq-a{overflow:hidden;transition:max-height .4s ease,padding .3s;max-height:0;padding:0 24px;}
-        .faq-a.open{max-height:300px;padding:0 24px 20px;}
-        .faq-a-text{font-size:.84rem;color:var(--text2);line-height:1.8;}
+        .faq-a{overflow:hidden;transition:max-height .4s ease,padding .3s;max-height:0;padding:0 26px;}
+        .faq-a.open{max-height:320px;padding:0 26px 22px;}
+        .faq-a-text{font-size:1rem;color:var(--text2);line-height:1.85;}
 
         /* CTA STRIP */
-        .cta-strip{position:relative;z-index:1;margin:0 52px 80px;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,var(--blue) 0%,var(--blue-d) 50%,#1245a0 100%);padding:52px;text-align:center;box-shadow:0 20px 80px rgba(33,119,209,.25);}
+        .cta-strip{position:relative;z-index:1;margin:0 52px 100px;border-radius:28px;overflow:hidden;background:linear-gradient(135deg,var(--blue) 0%,var(--blue-d) 50%,#1245a0 100%);padding:60px;text-align:center;box-shadow:0 20px 80px rgba(33,119,209,.25);}
         .cta-strip::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;}
         .cta-strip-inner{position:relative;z-index:1;}
-        .cta-strip-eyebrow{font-size:.65rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:16px;}
-        .cta-strip-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(1.8rem,3.5vw,2.8rem);letter-spacing:-.04em;color:white;margin-bottom:12px;line-height:1.1;}
-        .cta-strip-p{font-size:.88rem;color:rgba(255,255,255,.75);max-width:400px;margin:0 auto 32px;line-height:1.8;}
-        .cta-strip-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;}
-        .strip-btn-p{display:inline-flex;align-items:center;gap:8px;background:white;color:var(--blue);padding:13px 30px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:transform .15s,box-shadow .2s;}
+        .cta-strip-eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:18px;}
+        .cta-strip-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:clamp(2rem,3.5vw,3rem);letter-spacing:-.04em;color:white;margin-bottom:16px;line-height:1.12;}
+        .cta-strip-p{font-size:1.05rem;color:rgba(255,255,255,.8);max-width:460px;margin:0 auto 36px;line-height:1.85;}
+        .cta-strip-btns{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;}
+        .strip-btn-p{display:inline-flex;align-items:center;gap:10px;background:white;color:var(--blue);padding:18px 38px;border-radius:100px;font-family:'Plus Jakarta Sans',sans-serif;font-size:1.05rem;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:transform .15s,box-shadow .2s;}
         .strip-btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.2);}
-        .strip-btn-g{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);color:white;padding:13px 24px;border-radius:100px;font-size:.88rem;font-weight:500;text-decoration:none;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(10px);transition:background .2s;}
+        .strip-btn-g{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);color:white;padding:18px 28px;border-radius:100px;font-size:1rem;font-weight:500;text-decoration:none;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(10px);transition:background .2s;}
         .strip-btn-g:hover{background:rgba(255,255,255,.2);}
 
         /* FOOTER */
-        .hiw-footer{position:relative;z-index:1;padding:32px 52px;border-top:1px solid var(--border);background:var(--glass);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
-        .f-logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
-        .f-links{display:flex;gap:22px;}
-        .f-link{font-size:.75rem;color:var(--muted);text-decoration:none;transition:color .2s;}
+        .hiw-footer{position:relative;z-index:1;padding:40px 52px;border-top:1px solid var(--border);background:var(--glass);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+        .f-logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.03em;color:var(--blue);text-decoration:none;}
+        .f-links{display:flex;gap:26px;}
+        .f-link{font-size:.88rem;color:var(--muted);text-decoration:none;font-weight:500;transition:color .2s;}
         .f-link:hover{color:var(--blue);}
-        .f-copy{font-size:.7rem;color:var(--muted);}
+        .f-copy{font-size:.82rem;color:var(--muted);}
 
         /* SCROLL REVEAL */
         .reveal,.reveal-s{opacity:0;transition:opacity .85s cubic-bezier(.16,1,.3,1),transform .85s cubic-bezier(.16,1,.3,1);}
@@ -401,11 +404,11 @@ export default function HowItWorksPage() {
       <section className="hiw-hero">
         <div className="hiw-hero-grid" />
         <div className="hiw-hero-inner">
-          <div className="hiw-pill"><span className="pill-dot" />How Nyra works</div>
-          <h1 className="hiw-h">Simple to set up.<br /><span>Effortless forever.</span></h1>
-          <p className="hiw-sub">From adding your first bill to never worrying about a late fee again — here&apos;s exactly how Nyra works, step by step.</p>
+          <div className="hiw-pill"><span className="pill-dot" />How Nyra Works</div>
+          <h1 className="hiw-h">Simple to set up.<br /><span>Nyra handles the rest.</span></h1>
+          <p className="hiw-sub">From adding your first bill to never missing a due date again — here&apos;s exactly how <span className="nyra-brand">Nyra</span> works, step by step.</p>
           <div className="hiw-ctas">
-            <a href="/#pricing" className="cta-p">Start for $3/month →</a>
+            <a href="/#pricing" className="cta-p">Start Nyra for $3/month →</a>
             <a href="#steps" className="cta-g">See the steps ↓</a>
           </div>
         </div>
@@ -413,9 +416,9 @@ export default function HowItWorksPage() {
 
       {/* STEPS */}
       <section className="steps-section" id="steps">
-        <div className="section-eyebrow reveal" ref={el => addReveal(el, 0)}>The process</div>
-        <h2 className="section-h reveal d1" ref={el => addReveal(el, 1)}>Four steps to financial<br />peace of mind.</h2>
-        <p className="section-p reveal d2" ref={el => addReveal(el, 2)}>No learning curve. No app to maintain. Just a setup that takes 3 minutes and then runs itself.</p>
+        <div className="section-eyebrow reveal" ref={el => addReveal(el, 0)}>The Nyra Process</div>
+        <h2 className="section-h reveal d1" ref={el => addReveal(el, 1)}>Four steps to never<br />miss a bill again.</h2>
+        <p className="section-p reveal d2" ref={el => addReveal(el, 2)}>No learning curve. No app to babysit. Just 3 minutes of setup and <span className="nyra-brand">Nyra</span> runs itself.</p>
 
         <div className="steps-timeline">
 
@@ -423,9 +426,9 @@ export default function HowItWorksPage() {
           <div className="step-block reveal" ref={el => addReveal(el, 3)}>
             <div className="step-num-col"><div className="step-circle">1</div></div>
             <div className="step-content">
-              <div className="step-eyebrow">Sign up</div>
-              <h3 className="step-h">Pick your plan, enter your details.</h3>
-              <p className="step-p">Choose the plan that fits your life — Basic for the essentials, Plus for most people, or Power if you track everything. Then enter your name, email, and phone number. Payment is handled securely through Stripe.</p>
+              <div className="step-eyebrow">Sign up for Nyra</div>
+              <h3 className="step-h">Pick your Nyra plan, enter your details.</h3>
+              <p className="step-p">Choose the plan that fits — Nyra Basic for essentials, Nyra Plus for most people, or Nyra Power if you track everything. Then enter your name, email, and phone. Stripe handles payment securely.</p>
               <div className="step-visual">
                 <div className="av-header"><div className="av-title">Create your account</div><div className="av-badge">Step 1 of 3</div></div>
                 <div className="av-field"><div><div className="av-field-label">Name</div><div className="av-field-val">John Smith</div></div></div>
@@ -444,8 +447,8 @@ export default function HowItWorksPage() {
             <div className="step-num-col"><div className="step-circle">2</div></div>
             <div className="step-content">
               <div className="step-eyebrow">Add your bills</div>
-              <h3 className="step-h">Add bills in seconds with AI assistance.</h3>
-              <p className="step-p">Head to your dashboard and start adding bills. Just type the bill name — Nyra&apos;s AI will immediately suggest the billing cycle, typical amount, and due date. Most people are done in under 3 minutes.</p>
+              <h3 className="step-h">Nyra AI helps you add bills in seconds.</h3>
+              <p className="step-p">Head to your dashboard and start adding bills. Type the name — <span className="nyra-brand">Nyra&apos;s AI</span> instantly suggests the billing cycle, typical amount, and due date. Most people finish in under 3 minutes.</p>
               <div className="step-visual">
                 <div className="av-header"><div className="av-title">Add a Bill</div><div className="av-badge">AI-powered</div></div>
                 <div className="av-field"><div><div className="av-field-label">Bill name</div><div className="av-field-val">Netflix</div></div></div>
@@ -468,8 +471,8 @@ export default function HowItWorksPage() {
             <div className="step-num-col"><div className="step-circle">3</div></div>
             <div className="step-content">
               <div className="step-eyebrow">Nyra tracks everything</div>
-              <h3 className="step-h">Your dashboard keeps it all organised.</h3>
-              <p className="step-p">Every bill lives in your dashboard with its due date, amount, and how far away it is. Bills are colour-coded by urgency so you can see what needs attention at a glance. Due dates roll forward automatically — you never update anything.</p>
+              <h3 className="step-h">Your Nyra dashboard keeps it all organized.</h3>
+              <p className="step-p">Every bill lives in your dashboard with its due date, amount, and countdown. Bills are colour-coded by urgency so you see what needs attention at a glance. <span className="nyra-brand">Nyra</span> rolls due dates forward automatically.</p>
               <div className="step-visual">
                 <div className="vd-row">
                   <div className="vd-stat"><div className="vd-stat-val">3</div><div className="vd-stat-lbl">Bills tracked</div></div>
@@ -492,9 +495,9 @@ export default function HowItWorksPage() {
           <div className="step-block reveal d3" ref={el => addReveal(el, 6)}>
             <div className="step-num-col"><div className="step-circle" style={{ background: 'linear-gradient(135deg,var(--gold),#a07820)' }}>4</div></div>
             <div className="step-content">
-              <div className="step-eyebrow" style={{ color: 'var(--gold)' }}>The payoff</div>
-              <h3 className="step-h">A text arrives. You pay. Done.</h3>
-              <p className="step-p">Nyra sends you a personal SMS exactly when you asked — 1, 3, 5, or 7 days before each bill is due. No app to open, no notification to find. Just a text on your phone. You pay the bill and watch every month close with zero late fees.</p>
+              <div className="step-eyebrow" style={{ color: 'var(--gold)' }}>The Nyra payoff</div>
+              <h3 className="step-h">A Nyra text arrives. You pay. Done.</h3>
+              <p className="step-p"><span className="nyra-brand">Nyra</span> sends a personal SMS exactly when you asked — 1, 3, 5, or 7 days before each bill is due. No app to open, no notification to find. Just a text. You pay the bill and close every month with zero late fees.</p>
               <div className="step-visual">
                 <div className="vs-phone">
                   <div className="vs-header">
@@ -533,16 +536,16 @@ export default function HowItWorksPage() {
       <section className="gamification-section" id="gamification">
         <div className="gam-inner">
           <div className="gam-header">
-            <div className="section-eyebrow reveal" ref={el => addReveal(el, 50)} style={{ justifyContent: 'center' }}>Level up your finances</div>
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 50)} style={{ justifyContent: 'center' }}>Nyra Gamification</div>
             <h2 className="section-h reveal d1" ref={el => addReveal(el, 51)} style={{ textAlign: 'center' }}>Make good habits<br />actually rewarding.</h2>
-            <p className="section-p reveal d2" ref={el => addReveal(el, 52)} style={{ textAlign: 'center', margin: '0 auto' }}>Nyra turns financial responsibility into something fun. Earn streaks, boost your Money IQ, unlock achievements, and climb the leaderboard.</p>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 52)} style={{ textAlign: 'center', margin: '0 auto' }}><span className="nyra-brand">Nyra</span> turns financial responsibility into something fun. Earn streaks, boost your Money IQ, unlock achievements, and climb the leaderboard.</p>
           </div>
 
           <div className="gam-grid">
             {/* Streak Card */}
             <div className="gam-card streak reveal d1" ref={el => addReveal(el, 53)}>
               <div className="gam-card-icon">🔥</div>
-              <div className="gam-card-title">Payment Streaks</div>
+              <div className="gam-card-title">Nyra Payment Streaks</div>
               <div className="gam-card-desc">Pay on time, keep your streak alive. Miss a payment? It resets. How long can you go?</div>
               <div className="streak-visual">
                 <div className="streak-day done">M</div>
@@ -562,8 +565,8 @@ export default function HowItWorksPage() {
             {/* Money IQ Card */}
             <div className="gam-card moneyiq reveal d2" ref={el => addReveal(el, 54)}>
               <div className="gam-card-icon">🧠</div>
-              <div className="gam-card-title">Money IQ Score</div>
-              <div className="gam-card-desc">Your financial health score. Pay on time and make smart decisions to boost it.</div>
+              <div className="gam-card-title">Nyra Money IQ Score</div>
+              <div className="gam-card-desc">Your financial health score from 0–100. Pay on time and make smart decisions to boost it.</div>
               <div className="moneyiq-visual">
                 <div className="iq-circle">
                   <div className="iq-score">74</div>
@@ -579,7 +582,7 @@ export default function HowItWorksPage() {
             {/* Achievements Card */}
             <div className="gam-card achieve reveal d3" ref={el => addReveal(el, 55)}>
               <div className="gam-card-icon">🏆</div>
-              <div className="gam-card-title">Achievements</div>
+              <div className="gam-card-title">Nyra Achievements</div>
               <div className="gam-card-desc">Unlock badges as you hit milestones. Collect them all and show off your progress.</div>
               <div className="achieve-grid">
                 <div className="achieve-badge"><div className="achieve-icon">🌟</div><div className="achieve-name">First Bill</div></div>
@@ -596,8 +599,8 @@ export default function HowItWorksPage() {
             {/* Leaderboard Card */}
             <div className="gam-card leader reveal d4" ref={el => addReveal(el, 56)}>
               <div className="gam-card-icon">📊</div>
-              <div className="gam-card-title">Weekly Leaderboard</div>
-              <div className="gam-card-desc">Compete with other Nyra users. Top performers get featured and earn bonus IQ points.</div>
+              <div className="gam-card-title">Nyra Weekly Leaderboard</div>
+              <div className="gam-card-desc">Compete with other <span className="nyra-brand">Nyra</span> users. Top performers get featured and earn bonus IQ points.</div>
               <div className="leader-list">
                 <div className="leader-row">
                   <div className="leader-rank">1</div>
@@ -635,9 +638,9 @@ export default function HowItWorksPage() {
       <section className="ai-section" id="ai-features">
         <div className="ai-inner">
           <div className="ai-header">
-            <div className="section-eyebrow reveal" ref={el => addReveal(el, 60)}>Powered by AI</div>
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 60)}>Nyra AI Features</div>
             <h2 className="section-h reveal d1" ref={el => addReveal(el, 61)}>Your personal<br />money advisor.</h2>
-            <p className="section-p reveal d2" ref={el => addReveal(el, 62)} style={{ textAlign: 'center', margin: '0 auto' }}>Nyra&apos;s AI learns your patterns and provides intelligent insights to help you make better financial decisions.</p>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 62)} style={{ textAlign: 'center', margin: '0 auto' }}><span className="nyra-brand">Nyra&apos;s AI</span> learns your patterns and provides intelligent insights to help you make better financial decisions.</p>
           </div>
 
           <div className="ai-bento">
@@ -675,7 +678,7 @@ export default function HowItWorksPage() {
             {/* Smart Insights Card */}
             <div className="ai-feature-card insights reveal d2" ref={el => addReveal(el, 64)}>
               <div className="ai-feature-icon">📊</div>
-              <div className="ai-feature-title">Smart Insights</div>
+              <div className="ai-feature-title">Nyra Smart Insights</div>
               <div className="ai-feature-desc">Weekly AI-generated reports showing spending trends, savings opportunities, and personalized tips.</div>
               <div className="insight-tags">
                 <span className="insight-tag">Weekly wrap-up</span>
@@ -688,7 +691,7 @@ export default function HowItWorksPage() {
             {/* Payment Intelligence Card */}
             <div className="ai-feature-card payment reveal d3" ref={el => addReveal(el, 65)}>
               <div className="ai-feature-icon">🔍</div>
-              <div className="ai-feature-title">Payment Intelligence</div>
+              <div className="ai-feature-title">Nyra Payment Intelligence</div>
               <div className="ai-feature-desc">Automatically detects unusual charges and alerts you before problems become expensive.</div>
               <div className="payment-alert">
                 <div className="payment-alert-icon">⚠️</div>
@@ -705,9 +708,9 @@ export default function HowItWorksPage() {
       <section className="dash-preview-section" id="dashboard-preview">
         <div className="dp-inner">
           <div className="dp-header">
-            <div className="section-eyebrow reveal" ref={el => addReveal(el, 7)}>The dashboard</div>
+            <div className="section-eyebrow reveal" ref={el => addReveal(el, 7)}>The Nyra Dashboard</div>
             <h2 className="section-h reveal d1" ref={el => addReveal(el, 8)}>Everything in one place.<br />Nothing you don&apos;t need.</h2>
-            <p className="section-p reveal d2" ref={el => addReveal(el, 9)} style={{ marginBottom: 0 }}>Nyra&apos;s dashboard is clean, fast, and built around one job: showing you what&apos;s due and when.</p>
+            <p className="section-p reveal d2" ref={el => addReveal(el, 9)} style={{ marginBottom: 0 }}><span className="nyra-brand">Nyra&apos;s</span> dashboard is clean, fast, and built around one job: showing you what&apos;s due and when.</p>
           </div>
           <div className="dash-mock reveal-s d1" ref={el => addReveal(el, 10)}>
             {/* Annotations */}
@@ -760,7 +763,7 @@ export default function HowItWorksPage() {
 
       {/* FAQ */}
       <section className="faq-section">
-        <div className="section-eyebrow reveal" ref={el => addReveal(el, 11)}>Common questions</div>
+        <div className="section-eyebrow reveal" ref={el => addReveal(el, 11)}>Nyra FAQ</div>
         <h2 className="section-h reveal d1" ref={el => addReveal(el, 12)}>Everything you<br />might be wondering.</h2>
         <div className="faq-list">
           {FAQS.map((faq, i) => (
@@ -780,12 +783,12 @@ export default function HowItWorksPage() {
       {/* CTA STRIP */}
       <div className="cta-strip reveal" ref={el => addReveal(el, 30)}>
         <div className="cta-strip-inner">
-          <div className="cta-strip-eyebrow">Ready to get started?</div>
+          <div className="cta-strip-eyebrow">Ready to start with Nyra?</div>
           <h2 className="cta-strip-h">Three minutes to<br />never miss a bill again.</h2>
-          <p className="cta-strip-p">Join Canadians who&apos;ve stopped stressing about due dates. Plans from $3/month — and 20% funds financial literacy for youth who need it most.</p>
+          <p className="cta-strip-p">Join Canadians who&apos;ve stopped stressing about due dates. Plans from $3/month — and 20% of Nyra profits fund financial literacy workshops for underserved youth across Canada.</p>
           <div className="cta-strip-btns">
-            <a href="/#pricing" className="strip-btn-p">Get started today →</a>
-            <a href="/" className="strip-btn-g">← Back to Nyra</a>
+            <a href="/#pricing" className="strip-btn-p">Get started with Nyra →</a>
+            <a href="/" className="strip-btn-g">← Back to Home</a>
           </div>
         </div>
       </div>
